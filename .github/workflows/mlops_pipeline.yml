@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Compile Python files
-        run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py tests/test_pipeline.py
+        run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py src/training/bootstrap_databricks_env.py tests/test_pipeline.py
       - name: Run tests
         run: pytest -q
 

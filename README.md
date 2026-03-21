@@ -47,6 +47,7 @@ GitHub Actions runs:
 
 This repo includes `src/training/trigger_databricks_job.py` to call the Databricks Jobs API `run-now` endpoint for job `286717033859672`.
 It also includes `src/training/register_model.py` to register the latest trained MLflow model in a separate pipeline stage.
+For Databricks jobs, `src/training/bootstrap_databricks_env.py` installs the uploaded wheel and `requirements-databricks.txt` from the configured dependency path before training starts.
 
 ## Databricks Dependency Artifacts
 
@@ -61,9 +62,17 @@ Current upload target in ADLS:
 
 Recommended Databricks usage:
 
-1. Attach the wheel from `databricks-libs/`
-2. Install `requirements-databricks.txt` for third-party packages
-3. Keep dataset files and dependency artifacts in separate ADLS paths
+1. Run `python src/training/bootstrap_databricks_env.py` as the first Databricks task step
+2. Keep `data.libraries_path` in [config.yaml](/Users/akshaykumar/mlops/mlops/configs/config.yaml) pointed at the mounted volume or storage path that contains the uploaded artifacts
+3. Run the training task after bootstrap completes
+4. Keep dataset files and dependency artifacts in separate ADLS paths
+
+Example Databricks job command sequence:
+
+```bash
+python src/training/bootstrap_databricks_env.py
+python src/training/train.py
+```
 
 Required GitHub secrets:
 
