@@ -26,13 +26,29 @@ def load_config(config_path: Path | None = None) -> dict:
         return yaml.safe_load(config_file)
 
 
-def main() -> None:
-    config = load_config()
-    dataset_root = PROJECT_ROOT / config["data"]["raw_path"]
+def resolve_dataset_root(config: dict) -> Path:
+    """Prefer UC volume path (ADLS) if available, else fall back to local + Kaggle download."""
+    volume_path = config["data"].get("volume_path")
+    if volume_path:
+        vp = Path(volume_path)
+        if vp.exists():
+            print(f"Using dataset from UC volume: {vp}")
+            return vp
+        print(f"UC volume path not found ({vp}), falling back to local path.")
 
+    dataset_root = PROJECT_ROOT / config["data"]["raw_path"]
     if not dataset_root.exists():
         print("Local dataset not found. Downloading from Kaggle...")
-        prepare_local_data(dataset_ref=config["data"]["kaggle_dataset"], raw_target=config["data"]["raw_path"])
+        prepare_local_data(
+            dataset_ref=config["data"]["kaggle_dataset"],
+            raw_target=config["data"]["raw_path"],
+        )
+    return dataset_root
+
+
+def main() -> None:
+    config = load_config()
+    dataset_root = resolve_dataset_root(config)
 
     dataset = BiometricDataset(
         dataset_root=str(dataset_root),
@@ -68,6 +84,7 @@ def main() -> None:
             "hidden_size": config["model"]["hidden_size"],
             "output_size": config["model"]["output_size"],
             "dataset_size": len(dataset),
+            "data_source": str(dataset_root),
         })
 
         model = SimpleModel(
@@ -96,7 +113,7 @@ def main() -> None:
         mlflow.log_metric("final_loss", average_loss)
         mlflow.pytorch.log_model(model, artifact_path="model")
 
-        print(f"Training done — MLflow run ID: {run.info.run_id}")
+        print(f"Training done \u2014 MLflow run ID: {run.info.run_id}")
 
 
 if __name__ == "__main__":
