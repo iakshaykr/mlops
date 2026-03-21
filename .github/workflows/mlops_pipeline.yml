@@ -65,5 +65,4 @@ jobs:
             --destination datacontainer \
             --source ./data \
             --overwrite true \
-            --auth-mode login \
-            --query "{count: length([]), size_gb: sum([].properties.contentLength) / 1024 / 1024 / 1024}"
+            --auth-mode login
