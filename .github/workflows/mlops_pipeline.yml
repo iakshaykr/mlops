@@ -65,8 +65,8 @@ jobs:
             --destination datacontainer \
             --source ./data \
             --overwrite true \
+            --auth-mode login
             --auth-mode login \
-            --query "{count: length([]), size_gb: sum([].properties.contentLength) / 1024 / 1024 / 1024}"
 
   databricks_job:
     runs-on: ubuntu-latest
