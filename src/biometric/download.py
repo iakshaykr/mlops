@@ -4,7 +4,14 @@ import shutil
 import kagglehub
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+try:
+    _this_file = Path(__file__).resolve()
+except NameError:
+    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/biometric/download.py")
+
+PROJECT_ROOT = _this_file.parents[2]
+
+VOLUME_PATH = Path("/Volumes/iakshaykr/default/biometric_data")
 
 
 def download_dataset(dataset_ref: str) -> Path:
@@ -16,6 +23,13 @@ def download_dataset(dataset_ref: str) -> Path:
 def prepare_local_data(
     dataset_ref: str, raw_target: str = "data/IRIS and FINGERPRINT DATASET"
 ) -> Path:
+    # Prefer UC volume (ADLS) if available
+    if VOLUME_PATH.exists():
+        print(f"Using dataset from UC volume: {VOLUME_PATH}")
+        return VOLUME_PATH
+
+    # Fall back to Kaggle download
+    print("UC volume not found, downloading from Kaggle...")
     source_root = download_dataset(dataset_ref)
     dataset_dir = source_root / "IRIS and FINGERPRINT DATASET"
     target_path = PROJECT_ROOT / raw_target
@@ -32,6 +46,7 @@ def prepare_local_data(
     shutil.copytree(dataset_dir, target_path)
     print(f"Copied dataset to: {target_path}")
     return target_path
+
 
 if __name__ == "__main__":
     prepare_local_data("ninadmehendale/multimodal-iris-fingerprint-biometric-data")
