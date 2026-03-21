@@ -49,7 +49,6 @@ This repo includes `src/training/trigger_databricks_job.py` to call the Databric
 It also includes `src/training/register_model.py` to register the latest trained MLflow model in a separate pipeline stage.
 For Databricks jobs, `src/training/bootstrap_databricks_env.py` installs the uploaded wheel and `requirements-databricks.txt` from the configured dependency path before training starts.
 `src/training/databricks_job_entrypoint.py` bootstraps the Databricks environment and then starts training.
-`src/training/create_or_run_databricks_job.py` creates or updates a Databricks job named `Mlops` and runs it through the Databricks Jobs API.
 `src/training/preprocess_databricks_job.py` runs distributed Spark preprocessing in Databricks when preprocessing mode is set to `spark`.
 
 ## Databricks Dependency Artifacts
@@ -76,37 +75,6 @@ Example Databricks job command sequence:
 python src/training/bootstrap_databricks_env.py
 python src/training/train.py
 ```
-
-If you want to manage the Databricks job definition from Python instead of the UI, run:
-
-```bash
-python src/training/create_or_run_databricks_job.py
-```
-
-This script:
-
-1. Finds a job named `Mlops`
-2. Creates it if it does not exist
-3. Updates it if it already exists
-4. Runs the job and waits for completion
-
-Required environment variables for that script:
-
-- `DATABRICKS_HOST`
-- `DATABRICKS_AAD_TOKEN` or `DATABRICKS_TOKEN`
-
-Optional overrides:
-
-- `DATABRICKS_GIT_URL`
-- `DATABRICKS_GIT_BRANCH`
-- `DATABRICKS_JOB_ENTRYPOINT`
-- `DATABRICKS_PREPROCESS_ENTRYPOINT`
-- `DATABRICKS_LIBRARIES_PATH`
-
-When `data.preprocessing.mode` is set to `spark`, the managed Databricks job includes two tasks:
-
-1. `preprocess`: runs `src/training/preprocess_databricks_job.py`
-2. `train`: waits for preprocessing to finish, then runs `src/training/databricks_job_entrypoint.py`
 
 Required GitHub secrets:
 

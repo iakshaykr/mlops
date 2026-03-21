@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Compile Python files
-        run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/biometric/preprocess.py src/biometric/preprocess_spark.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py src/training/bootstrap_databricks_env.py src/training/databricks_job_entrypoint.py src/training/preprocess_databricks_job.py src/training/create_or_run_databricks_job.py tests/test_pipeline.py
+        run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/biometric/preprocess.py src/biometric/preprocess_spark.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py src/training/bootstrap_databricks_env.py src/training/databricks_job_entrypoint.py src/training/preprocess_databricks_job.py tests/test_pipeline.py
       - name: Run tests
         run: pytest -q
 
@@ -137,12 +137,14 @@ jobs:
             --query accessToken \
             -o tsv)" >> "$GITHUB_OUTPUT"
 
-      - name: Create or run Databricks job
+      - name: Trigger Databricks job
         id: trigger_databricks_job
         env:
           DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+          DATABRICKS_JOB_ID: "286717033859672"
           DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
-        run: python src/training/create_or_run_databricks_job.py
+          DATABRICKS_WAIT_FOR_COMPLETION: "true"
+        run: python src/training/trigger_databricks_job.py
 
   model_registration:
     runs-on: ubuntu-latest
