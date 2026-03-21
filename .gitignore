@@ -1,0 +1,8 @@
+mlops_only/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+desktop.ini
+.pytest_cache/
+data/

@@ -1,0 +1,16 @@
+seed: 42
+
+data:
+  kaggle_dataset: "ninadmehendale/multimodal-iris-fingerprint-biometric-data"
+  raw_path: "data/IRIS and FINGERPRINT DATASET"
+  image_size: 32
+  batch_size: 32
+
+training:
+  epochs: 3
+  lr: 0.001
+
+model:
+  input_size: 3072
+  hidden_size: 64
+  output_size: 45
