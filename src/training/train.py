@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 import yaml
 import mlflow
 import mlflow.pytorch
+from mlflow.models import infer_signature
 
 from src.biometric.download import prepare_local_data
 from src.biometric.loader import BiometricDataset, PreprocessedBiometricDataset
@@ -193,7 +194,16 @@ def main() -> None:
 
         # Log final loss and the trained model
         mlflow.log_metric("final_loss", average_loss)
-        mlflow.pytorch.log_model(model, artifact_path="model")
+        input_example = sample_features.unsqueeze(0).cpu().numpy().astype(np.float32)
+        with torch.no_grad():
+            prediction_example = model(sample_features.unsqueeze(0)).cpu().numpy()
+        signature = infer_signature(input_example, prediction_example)
+        mlflow.pytorch.log_model(
+            model,
+            artifact_path="model",
+            signature=signature,
+            input_example=input_example,
+        )
 
         print(f"Training done \u2014 MLflow run ID: {run.info.run_id}")
 
