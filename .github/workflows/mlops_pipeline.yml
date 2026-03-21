@@ -1,0 +1,69 @@
+name: MLOps Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - feature/biometric
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile Python files
+        run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/training/train.py tests/test_pipeline.py
+      - name: Run tests
+        run: pytest -q
+
+  # 🔹 Stage 2: Data Pipeline
+  data_pipeline:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Kaggle CLI
+        run: pip install kaggle
+
+      - name: Setup Kaggle API
+        run: |
+          mkdir -p ~/.kaggle
+          echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      - name: Download dataset
+        run: |
+          kaggle datasets download -d ninadmehendale/multimodal-iris-fingerprint-biometric-data
+          unzip -o multimodal-iris-fingerprint-biometric-data.zip -d data
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload to ADLS
+        run: |
+          az storage blob upload-batch \
+            --account-name projectmlops \
+            --destination datacontainer \
+            --source ./data \
+            --overwrite true \
+            --auth-mode login \
+            --query "{count: length([]), size_gb: sum([].properties.contentLength) / 1024 / 1024 / 1024}"
