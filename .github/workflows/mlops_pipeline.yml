@@ -65,9 +65,6 @@ jobs:
             --destination datacontainer \
             --source ./data \
             --overwrite true \
-<<<<<<< HEAD
-            --auth-mode login
-=======
             --auth-mode login \
             --query "{count: length([]), size_gb: sum([].properties.contentLength) / 1024 / 1024 / 1024}"
 
@@ -103,4 +100,3 @@ jobs:
           DATABRICKS_JOB_ID: "286717033859672"
           DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
         run: python src/training/trigger_databricks_job.py
->>>>>>> 90abf4b ( Dbx Jobs)
