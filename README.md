@@ -31,6 +31,50 @@ This project uses the Kaggle dataset `ninadmehendale/multimodal-iris-fingerprint
 python src/training/train.py
 ```
 
+## Architecture
+
+```text
+          ┌──────────────────────┐
+          │   Kaggle Dataset     │
+          └─────────┬────────────┘
+                    │
+                    ▼
+      ┌────────────────────────────┐
+      │ GitHub Actions (CI/CD)     │
+      │ - Download data            │
+      │ - Validate                 │
+      │ - Upload to ADLS           │
+      └─────────┬──────────────────┘
+                │
+                ▼
+     ┌─────────────────────────────┐
+     │ ADLS Gen2 (Data Storage)    │
+     │ - Scalable storage          │
+     │ - Central data layer        │
+     └─────────┬───────────────────┘
+               │
+               ▼
+     ┌─────────────────────────────┐
+     │ Training Pipeline (.py)     │
+     │ - Data Loader               │
+     │ - Model Training            │
+     │ - Caching                   │
+     └─────────┬───────────────────┘
+               │
+               ▼
+     ┌─────────────────────────────┐
+     │ MLflow Tracking             │
+     │ - Params                    │
+     │ - Metrics                   │
+     │ - Model artifacts           │
+     └─────────┬───────────────────┘
+               │
+               ▼
+     ┌─────────────────────────────┐
+     │ Model Registry (Future)     │
+     └─────────────────────────────┘
+```
+
 ## CI
 
 GitHub Actions runs:
