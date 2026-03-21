@@ -1,4 +1,12 @@
+import sys
 from pathlib import Path
+
+try:
+    _this_file = Path(__file__).resolve()
+except NameError:
+    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/tests/test_pipeline.py")
+
+sys.path.insert(0, str(_this_file.parents[1]))
 
 from PIL import Image
 
