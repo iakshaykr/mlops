@@ -4,7 +4,7 @@ data:
   kaggle_dataset: "ninadmehendale/multimodal-iris-fingerprint-biometric-data"
   raw_path: "data/IRIS and FINGERPRINT DATASET"
   volume_path: "/Volumes/iakshaykr/default/biometric_data"
-  libraries_path: "/Volumes/iakshaykr/default/biometric_data/databricks-libs"
+  libraries_path: "/Volumes/iakshaykr/default/databricks-libs"
   image_size: 32
   batch_size: 32
 

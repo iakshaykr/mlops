@@ -10,8 +10,6 @@ except NameError:
 PROJECT_ROOT = _this_file.parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.training.bootstrap_databricks_env import install_dependencies
-
 import torch
 from torch.utils.data import DataLoader
 import yaml
@@ -27,12 +25,6 @@ def load_config(config_path: Path | None = None) -> dict:
     config_path = config_path or PROJECT_ROOT / "configs" / "config.yaml"
     with open(config_path, "r", encoding="utf-8") as config_file:
         return yaml.safe_load(config_file)
-
-
-def should_bootstrap_dependencies() -> bool:
-    if os.getenv("DATABRICKS_SKIP_BOOTSTRAP", "false").lower() == "true":
-        return False
-    return "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 
 def resolve_dataset_root(config: dict) -> Path:
@@ -126,7 +118,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if should_bootstrap_dependencies():
-        install_dependencies()
     torch.manual_seed(load_config().get("seed", 42))
     main()
