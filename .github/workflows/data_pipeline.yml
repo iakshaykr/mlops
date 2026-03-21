@@ -1,10 +1,10 @@
 name: Download from Kaggle and Upload to ADLS
 
 on:
-  push:
-    branches:
-      - main
-      - feature/*
+#   push:
+#     branches:
+#       - main
+#       - feature/*
   workflow_dispatch:
 
 jobs:
