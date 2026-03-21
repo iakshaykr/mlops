@@ -39,6 +39,7 @@ GitHub Actions runs:
 - Python bytecode compilation
 - A small pytest smoke test for the dataset/model pipeline
 - Kaggle dataset download and ADLS upload
+- Databricks wheel and requirements artifact build/upload to ADLS
 - Databricks job trigger via `src/training/trigger_databricks_job.py`
 - MLflow model registration via `src/training/register_model.py`
 
@@ -46,6 +47,23 @@ GitHub Actions runs:
 
 This repo includes `src/training/trigger_databricks_job.py` to call the Databricks Jobs API `run-now` endpoint for job `286717033859672`.
 It also includes `src/training/register_model.py` to register the latest trained MLflow model in a separate pipeline stage.
+
+## Databricks Dependency Artifacts
+
+The repo now builds a wheel from `pyproject.toml` and uploads these dependency artifacts to ADLS:
+
+- `dist/biometric_mlops-0.1.0-py3-none-any.whl`
+- `requirements-databricks.txt`
+
+Current upload target in ADLS:
+
+- `datacontainer/databricks-libs/`
+
+Recommended Databricks usage:
+
+1. Attach the wheel from `databricks-libs/`
+2. Install `requirements-databricks.txt` for third-party packages
+3. Keep dataset files and dependency artifacts in separate ADLS paths
 
 Required GitHub secrets:
 
