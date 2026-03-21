@@ -7,6 +7,15 @@ data:
   libraries_path: "/Volumes/iakshaykr/default/databricks-libs"
   image_size: 32
   batch_size: 32
+  num_workers: 2
+  pin_memory: false
+  preprocessing:
+    enabled: true
+    cache_path: "data/preprocessed/biometric_cache"
+    mode: "local"
+    num_workers: 4
+    num_partitions: 8
+    force_rebuild: false
 
 training:
   epochs: 3

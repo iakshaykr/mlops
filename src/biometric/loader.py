@@ -1,9 +1,12 @@
 from pathlib import Path
+import json
 
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
 import numpy as np
+
+from src.biometric.preprocess import discover_samples
 
 
 class BiometricDataset(Dataset):
@@ -21,40 +24,7 @@ class BiometricDataset(Dataset):
             raise ValueError("No valid multimodal samples were found in the dataset.")
 
     def _build_samples(self) -> list[tuple[Path, Path, Path, int]]:
-        samples: list[tuple[Path, Path, Path, int]] = []
-        subject_dirs = sorted(
-            [
-                path
-                for path in self.dataset_root.iterdir()
-                if path.is_dir() and path.name.isdigit()
-            ],
-            key=lambda path: int(path.name),
-        )
-
-        for label, subject_dir in enumerate(subject_dirs):
-            left_dir = subject_dir / "left"
-            right_dir = subject_dir / "right"
-            fingerprint_dir = subject_dir / "Fingerprint"
-            if not left_dir.is_dir() or not right_dir.is_dir() or not fingerprint_dir.is_dir():
-                continue
-
-            left_images = sorted(
-                [path for path in left_dir.iterdir() if path.suffix.lower() == ".bmp"]
-            )
-            right_images = sorted(
-                [path for path in right_dir.iterdir() if path.suffix.lower() == ".bmp"]
-            )
-            fingerprint_images = sorted(
-                [path for path in fingerprint_dir.iterdir() if path.suffix.lower() == ".bmp"]
-            )
-
-            sample_count = min(len(left_images), len(right_images), len(fingerprint_images))
-            for idx in range(sample_count):
-                samples.append(
-                    (left_images[idx], right_images[idx], fingerprint_images[idx], label)
-                )
-
-        return samples
+        return discover_samples(self.dataset_root)
 
     def _load_image(self, image_path: Path) -> np.ndarray:
         with Image.open(image_path) as image:
@@ -76,3 +46,29 @@ class BiometricDataset(Dataset):
         data = torch.from_numpy(data)
         label = torch.tensor(label, dtype=torch.long)
         return data, label
+
+
+class PreprocessedBiometricDataset(Dataset):
+    def __init__(self, preprocessed_root: str):
+        self.preprocessed_root = Path(preprocessed_root)
+        metadata_path = self.preprocessed_root / "metadata.json"
+        if not metadata_path.is_file():
+            raise FileNotFoundError(
+                f"Preprocessed dataset metadata not found: {metadata_path}"
+            )
+
+        with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+            metadata = json.load(metadata_file)
+
+        self.records = metadata.get("records", [])
+        if not self.records:
+            raise ValueError("No preprocessed records were found in the dataset cache.")
+
+    def __len__(self):
+        return len(self.records)
+
+    def __getitem__(self, idx):
+        record = self.records[idx]
+        data = np.load(record["feature_path"]).astype(np.float32)
+        label = int(record["label"])
+        return torch.from_numpy(data), torch.tensor(label, dtype=torch.long)

@@ -8,6 +8,28 @@ from mlflow.tracking import MlflowClient
 DEFAULT_EXPERIMENT_NAME = "/Users/akshaykr9531@gmail.com/biometric-training"
 DEFAULT_MODEL_NAME = "biometric_model"
 DEFAULT_RUN_NAME = "biometric-simple-model"
+DEFAULT_TRACKING_URI = "databricks"
+DEFAULT_REGISTRY_URI = "databricks-uc"
+
+
+def resolve_model_name(registry_uri: str) -> str:
+    model_name = os.getenv("MLFLOW_MODEL_NAME", DEFAULT_MODEL_NAME)
+    if registry_uri != "databricks-uc":
+        return model_name
+
+    if model_name.count(".") == 2:
+        return model_name
+
+    uc_catalog = os.getenv("MLFLOW_UC_CATALOG")
+    uc_schema = os.getenv("MLFLOW_UC_SCHEMA")
+    if not uc_catalog or not uc_schema:
+        raise ValueError(
+            "Unity Catalog registration requires either "
+            "`MLFLOW_MODEL_NAME=catalog.schema.model_name` or both "
+            "`MLFLOW_UC_CATALOG` and `MLFLOW_UC_SCHEMA`."
+        )
+
+    return f"{uc_catalog}.{uc_schema}.{model_name}"
 
 
 def resolve_run_id(client: MlflowClient) -> str:
@@ -36,16 +58,27 @@ def resolve_run_id(client: MlflowClient) -> str:
 
 
 def main() -> int:
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "databricks"))
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
+    registry_uri = os.getenv("MLFLOW_REGISTRY_URI", DEFAULT_REGISTRY_URI)
+
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_registry_uri(registry_uri)
     client = MlflowClient()
 
     run_id = resolve_run_id(client)
-    model_name = os.getenv("MLFLOW_MODEL_NAME", DEFAULT_MODEL_NAME)
+    model_name = resolve_model_name(registry_uri)
     model_uri = f"runs:/{run_id}/model"
+
+    if registry_uri == "databricks-uc" and model_name.count(".") != 2:
+        raise ValueError(
+            "Unity Catalog model registration requires "
+            "`catalog_name.schema_name.model_name`."
+        )
 
     result = mlflow.register_model(model_uri=model_uri, name=model_name)
     print(
-        f"Registered model '{model_name}' from run_id={run_id} as version={result.version}"
+        f"Registered model '{model_name}' from run_id={run_id} as version={result.version} "
+        f"using registry_uri={registry_uri}"
     )
     return 0
 

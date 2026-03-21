@@ -3,9 +3,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import yaml
-
-
 try:
     _this_file = Path(__file__).resolve()
 except NameError:
@@ -15,12 +12,6 @@ PROJECT_ROOT = _this_file.parents[2]
 DEFAULT_LIBRARIES_PATH = "/Volumes/iakshaykr/default/biometric_data/databricks-libs"
 
 
-def load_config(config_path: Path | None = None) -> dict:
-    config_path = config_path or PROJECT_ROOT / "configs" / "config.yaml"
-    with open(config_path, "r", encoding="utf-8") as config_file:
-        return yaml.safe_load(config_file)
-
-
 def run_pip_install(*args: str) -> None:
     command = [sys.executable, "-m", "pip", "install", *args]
     print(f"Running: {' '.join(command)}")
@@ -28,9 +19,7 @@ def run_pip_install(*args: str) -> None:
 
 
 def resolve_libraries_path() -> Path:
-    config = load_config()
-    configured_path = config.get("data", {}).get("libraries_path", DEFAULT_LIBRARIES_PATH)
-    return Path(os.getenv("DATABRICKS_LIBRARIES_PATH", configured_path))
+    return Path(os.getenv("DATABRICKS_LIBRARIES_PATH", DEFAULT_LIBRARIES_PATH))
 
 
 def install_dependencies() -> int:
