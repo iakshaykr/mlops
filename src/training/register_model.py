@@ -1,8 +1,10 @@
 import os
 import sys
+from pathlib import Path
 
 import mlflow
 from mlflow.tracking import MlflowClient
+import yaml
 
 
 DEFAULT_EXPERIMENT_NAME = "/Users/akshaykr9531@gmail.com/biometric-training"
@@ -47,14 +49,40 @@ def resolve_run_id(client: MlflowClient) -> str:
         experiment_ids=[experiment.experiment_id],
         filter_string=f"attributes.run_name = '{run_name}'",
         order_by=["attributes.start_time DESC"],
-        max_results=1,
+        max_results=20,
     )
     if not runs:
         raise ValueError(
             f"No MLflow runs found in experiment '{experiment_name}' with run_name '{run_name}'."
         )
 
-    return runs[0].info.run_id
+    for run in runs:
+        if run_model_has_signature(run.info.run_id):
+            return run.info.run_id
+
+    raise ValueError(
+        f"No MLflow runs found in experiment '{experiment_name}' with run_name '{run_name}' "
+        "that contain a model signature at artifact path 'model'. Rerun training with "
+        "signature logging enabled."
+    )
+
+
+def run_model_has_signature(run_id: str) -> bool:
+    try:
+        mlmodel_path = Path(
+            mlflow.artifacts.download_artifacts(artifact_uri=f"runs:/{run_id}/model/MLmodel")
+        )
+    except Exception:
+        return False
+
+    if not mlmodel_path.is_file():
+        return False
+
+    with open(mlmodel_path, "r", encoding="utf-8") as mlmodel_file:
+        mlmodel_data = yaml.safe_load(mlmodel_file)
+
+    signature = mlmodel_data.get("signature")
+    return signature is not None
 
 
 def main() -> int:
