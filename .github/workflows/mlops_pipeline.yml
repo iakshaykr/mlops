@@ -13,64 +13,64 @@ on:
         type: string
 
 jobs:
-  # test:
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     PYTHONPATH: .
-  #   steps:
-  #     - uses: actions/checkout@v6
-  #     - uses: actions/setup-python@v6
-  #       with:
-  #         python-version: "3.11"
-  #         cache: "pip"
-  #     - name: Install dependencies
-  #       run: pip install -r requirements.txt
-  #     - name: Compile Python files
-  #       run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/biometric/preprocess.py src/biometric/preprocess_spark.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py src/training/save_registered_model.py src/training/load_and_predict.py src/training/bootstrap_databricks_env.py src/training/databricks_job_entrypoint.py src/training/preprocess_databricks_job.py tests/test_pipeline.py
-  #     - name: Run tests
-  #       run: pytest -q
+  test:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile Python files
+        run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/biometric/preprocess.py src/biometric/preprocess_spark.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py src/training/save_registered_model.py src/training/load_and_predict.py src/training/bootstrap_databricks_env.py src/training/databricks_job_entrypoint.py src/training/preprocess_databricks_job.py tests/test_pipeline.py
+      - name: Run tests
+        run: pytest -q
 
-  # # 🔹 Stage 2: Data Pipeline
-  # data_pipeline:
-  #   runs-on: ubuntu-latest
-  #   needs: test
-  #
-  #   steps:
-  #     - name: Checkout repo
-  #       uses: actions/checkout@v6
-  #
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v6
-  #       with:
-  #         python-version: "3.11"
-  #
-  #     - name: Install Kaggle CLI
-  #       run: pip install kaggle
-  #
-  #     - name: Setup Kaggle API
-  #       run: |
-  #         mkdir -p ~/.kaggle
-  #         echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
-  #         chmod 600 ~/.kaggle/kaggle.json
-  #
-  #     - name: Download dataset
-  #       run: |
-  #         kaggle datasets download -d ninadmehendale/multimodal-iris-fingerprint-biometric-data
-  #         unzip -o multimodal-iris-fingerprint-biometric-data.zip -d data
-  #
-  #     - name: Azure Login
-  #       uses: azure/login@v2
-  #       with:
-  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
-  #
-  #     - name: Upload to ADLS
-  #       run: |
-  #         az storage blob upload-batch \
-  #           --account-name projectmlops \
-  #           --destination datacontainer \
-  #           --source ./data \
-  #           --overwrite true \
-  #           --auth-mode login
+  # 🔹 Stage 2: Data Pipeline
+  data_pipeline:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Kaggle CLI
+        run: pip install kaggle
+
+      - name: Setup Kaggle API
+        run: |
+          mkdir -p ~/.kaggle
+          echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      - name: Download dataset
+        run: |
+          kaggle datasets download -d ninadmehendale/multimodal-iris-fingerprint-biometric-data
+          unzip -o multimodal-iris-fingerprint-biometric-data.zip -d data
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload to ADLS
+        run: |
+          az storage blob upload-batch \
+            --account-name projectmlops \
+            --destination datacontainer \
+            --source ./data \
+            --overwrite true \
+            --auth-mode login
 
   # databricks_job:
   #   runs-on: ubuntu-latest
@@ -110,104 +110,104 @@ jobs:
   #         DATABRICKS_WAIT_FOR_COMPLETION: "true"
   #       run: python src/training/trigger_databricks_job.py
 
-  # model_registration:
-  #   runs-on: ubuntu-latest
-  #   # needs: databricks_job
-  #
-  #   steps:
-  #     - name: Checkout repo
-  #       uses: actions/checkout@v6
-  #
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v6
-  #       with:
-  #         python-version: "3.11"
-  #         cache: "pip"
-  #
-  #     - name: Install dependencies
-  #       run: pip install -r requirements.txt "mlflow[databricks]"
-  #
-  #     - name: Azure login for Databricks SPN
-  #       uses: azure/login@v2
-  #       with:
-  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
-  #
-  #     - name: Get Microsoft Entra token for Azure Databricks
-  #       id: registration_databricks_aad_token
-  #       run: |
-  #         echo "token=$(az account get-access-token \
-  #           --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
-  #           --query accessToken \
-  #           -o tsv)" >> "$GITHUB_OUTPUT"
-  #
-  #     - name: Register latest trained model
-  #       env:
-  #         MLFLOW_TRACKING_URI: databricks
-  #         MLFLOW_REGISTRY_URI: databricks-uc
-  #         DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
-  #         DATABRICKS_TOKEN: ${{ steps.registration_databricks_aad_token.outputs.token }}
-  #         MLFLOW_EXPERIMENT_NAME: /Users/akshaykr9531@gmail.com/biometric-training
-  #         MLFLOW_RUN_NAME: biometric-simple-model
-  #         MLFLOW_MODEL_NAME: biometric_model
-  #         MLFLOW_UC_CATALOG: ${{ vars.UC_CATALOG }}
-  #         MLFLOW_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
-  #       run: python src/training/register_model.py
+  model_registration:
+    runs-on: ubuntu-latest
+    # needs: databricks_job
 
-  # model_validation:
-  #   runs-on: ubuntu-latest
-  #   # needs: model_registration
-  #   outputs:
-  #     source_model_version: ${{ steps.validate_model.outputs.source_model_version }}
-  #
-  #   steps:
-  #     - name: Checkout repo
-  #       uses: actions/checkout@v6
-  #
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v6
-  #       with:
-  #         python-version: "3.11"
-  #         cache: "pip"
-  #
-  #     - name: Install dependencies
-  #       run: pip install -r requirements.txt "mlflow[databricks]"
-  #
-  #     - name: Azure login for Databricks SPN
-  #       uses: azure/login@v2
-  #       with:
-  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
-  #
-  #     - name: Get Microsoft Entra token for Azure Databricks
-  #       id: promotion_databricks_aad_token
-  #       run: |
-  #         echo "token=$(az account get-access-token \
-  #           --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
-  #           --query accessToken \
-  #           -o tsv)" >> "$GITHUB_OUTPUT"
-  #
-  #     - name: Validate downloaded UC model artifacts
-  #       id: validate_model
-  #       env:
-  #         MLFLOW_TRACKING_URI: databricks
-  #         MLFLOW_REGISTRY_URI: databricks-uc
-  #         DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
-  #         DATABRICKS_TOKEN: ${{ steps.promotion_databricks_aad_token.outputs.token }}
-  #         SOURCE_MODEL_NAME: biometric_model
-  #         SOURCE_UC_CATALOG: ${{ vars.UC_CATALOG }}
-  #         SOURCE_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
-  #         MODEL_DOWNLOAD_DIR: promoted_model_artifacts
-  #         VALIDATION_ONLY: "true"
-  #       run: python src/training/copy_uc_model_version.py
-  #
-  #     - name: Upload validated model artifacts to ADLS
-  #       run: |
-  #         az storage blob upload-batch \
-  #           --account-name projectmlops \
-  #           --destination datacontainer \
-  #           --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
-  #           --source ./promoted_model_artifacts \
-  #           --overwrite true \
-  #           --auth-mode login
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt "mlflow[databricks]"
+
+      - name: Azure login for Databricks SPN
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Microsoft Entra token for Azure Databricks
+        id: registration_databricks_aad_token
+        run: |
+          echo "token=$(az account get-access-token \
+            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+            --query accessToken \
+            -o tsv)" >> "$GITHUB_OUTPUT"
+
+      - name: Register latest trained model
+        env:
+          MLFLOW_TRACKING_URI: databricks
+          MLFLOW_REGISTRY_URI: databricks-uc
+          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+          DATABRICKS_TOKEN: ${{ steps.registration_databricks_aad_token.outputs.token }}
+          MLFLOW_EXPERIMENT_NAME: /Users/akshaykr9531@gmail.com/biometric-training
+          MLFLOW_RUN_NAME: biometric-simple-model
+          MLFLOW_MODEL_NAME: biometric_model
+          MLFLOW_UC_CATALOG: ${{ vars.UC_CATALOG }}
+          MLFLOW_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
+        run: python src/training/register_model.py
+
+  model_validation:
+    runs-on: ubuntu-latest
+    # needs: model_registration
+    outputs:
+      source_model_version: ${{ steps.validate_model.outputs.source_model_version }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt "mlflow[databricks]"
+
+      - name: Azure login for Databricks SPN
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Microsoft Entra token for Azure Databricks
+        id: promotion_databricks_aad_token
+        run: |
+          echo "token=$(az account get-access-token \
+            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+            --query accessToken \
+            -o tsv)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate downloaded UC model artifacts
+        id: validate_model
+        env:
+          MLFLOW_TRACKING_URI: databricks
+          MLFLOW_REGISTRY_URI: databricks-uc
+          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+          DATABRICKS_TOKEN: ${{ steps.promotion_databricks_aad_token.outputs.token }}
+          SOURCE_MODEL_NAME: biometric_model
+          SOURCE_UC_CATALOG: ${{ vars.UC_CATALOG }}
+          SOURCE_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
+          MODEL_DOWNLOAD_DIR: promoted_model_artifacts
+          VALIDATION_ONLY: "true"
+        run: python src/training/copy_uc_model_version.py
+
+      - name: Upload validated model artifacts to ADLS
+        run: |
+          az storage blob upload-batch \
+            --account-name projectmlops \
+            --destination datacontainer \
+            --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
+            --source ./promoted_model_artifacts \
+            --overwrite true \
+            --auth-mode login
 
   # model_promotion:
   #   runs-on: ubuntu-latest
