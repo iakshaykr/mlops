@@ -79,11 +79,36 @@ def write_github_output(name: str, value: str) -> None:
         output_file.write(f"{name}={value}\n")
 
 
+def resolve_downloaded_model_dir(download_root: Path, downloaded_path: Path) -> Path:
+    if downloaded_path.is_dir() and (downloaded_path / "MLmodel").is_file():
+        return downloaded_path
+
+    if downloaded_path.is_file() and downloaded_path.name == "MLmodel":
+        return downloaded_path.parent
+
+    search_root = downloaded_path if downloaded_path.is_dir() else downloaded_path.parent
+    candidate_paths = sorted(path.parent for path in search_root.rglob("MLmodel"))
+    if not candidate_paths and search_root != download_root:
+        candidate_paths = sorted(path.parent for path in download_root.rglob("MLmodel"))
+
+    if not candidate_paths:
+        raise FileNotFoundError(
+            f"No MLmodel file found under downloaded artifacts. "
+            f"downloaded_path={downloaded_path}, download_root={download_root}"
+        )
+
+    return candidate_paths[0]
+
+
 def normalize_downloaded_model_path(download_root: Path, downloaded_path: Path) -> Path:
+    source_model_dir = resolve_downloaded_model_dir(download_root, downloaded_path)
     normalized_path = download_root / NORMALIZED_MODEL_DIR_NAME
     if normalized_path.exists():
-        shutil.rmtree(normalized_path)
-    shutil.copytree(downloaded_path, normalized_path)
+        if normalized_path.is_dir():
+            shutil.rmtree(normalized_path)
+        else:
+            normalized_path.unlink()
+    shutil.copytree(source_model_dir, normalized_path)
     return normalized_path
 
 
