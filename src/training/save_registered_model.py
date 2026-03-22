@@ -7,21 +7,30 @@ from pathlib import Path
 import mlflow
 from mlflow.tracking import MlflowClient
 
-try:
-    _this_file = Path(__file__).resolve()
-except NameError:
-    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/training/save_registered_model.py")
-
-PROJECT_ROOT = _this_file.parents[2]
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.training.register_model import resolve_model_name
-
-
 DEFAULT_MODEL_NAME = "biometric_model"
 DEFAULT_TRACKING_URI = "databricks"
 DEFAULT_REGISTRY_URI = "databricks-uc"
 DEFAULT_OUTPUT_DIR = "/Volumes/iakshaykr/default/prod"
+
+
+def resolve_model_name(registry_uri: str) -> str:
+    model_name = os.getenv("MLFLOW_MODEL_NAME", DEFAULT_MODEL_NAME)
+    if registry_uri != "databricks-uc":
+        return model_name
+
+    if model_name.count(".") == 2:
+        return model_name
+
+    uc_catalog = os.getenv("MLFLOW_UC_CATALOG")
+    uc_schema = os.getenv("MLFLOW_UC_SCHEMA")
+    if not uc_catalog or not uc_schema:
+        raise ValueError(
+            "Unity Catalog registration requires either "
+            "`MLFLOW_MODEL_NAME=catalog.schema.model_name` or both "
+            "`MLFLOW_UC_CATALOG` and `MLFLOW_UC_SCHEMA`."
+        )
+
+    return f"{uc_catalog}.{uc_schema}.{model_name}"
 
 
 def _suppress_spark_connect_noise() -> None:
