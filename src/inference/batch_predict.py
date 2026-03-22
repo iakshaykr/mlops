@@ -121,20 +121,14 @@ def batch_predict(
     return results
 
 
-def save_predictions_to_delta(
+def save_predictions_to_volume(
     results: list[dict[str, object]],
     input_df: pd.DataFrame,
-    output_table: str,
+    output_volume_path: str,
     model_source: str,
 ) -> None:
-    """Save batch predictions to Databricks Delta table."""
-    try:
-        from delta import configure_spark_with_delta_pip
-        from pyspark.sql import SparkSession
-    except ImportError:
-        raise ImportError(
-            "PySpark/Delta not available. Install with: pip install pyspark delta-spark"
-        )
+    """Save batch predictions to Databricks volume via ADLS upload."""
+    import subprocess
 
     # Create results dataframe
     results_df = pd.DataFrame(results)
@@ -142,22 +136,53 @@ def save_predictions_to_delta(
     results_df["model_source"] = model_source
     results_df["batch_timestamp"] = pd.Timestamp.now()
 
-    # Initialize Spark
-    builder = SparkSession.builder.appName("batch_predict").config(
-        "spark.sql.extensions",
-        "io.delta.sql.DeltaSparkSessionExtension",
-    ).config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+    # Save to local CSV first
+    local_file = "batch_predictions.csv"
+    results_df.to_csv(local_file, index=False)
 
-    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+    # Upload to ADLS (volume)
+    try:
+        # Extract volume path components
+        # Expected format: /Volumes/catalog/schema/volume_name
+        if output_volume_path.startswith("/Volumes/"):
+            # Convert to ADLS path: catalog/schema/volume_name/filename
+            volume_parts = output_volume_path.replace(
+                "/Volumes/", "").split("/")
+            if len(volume_parts) >= 3:
+                catalog, schema, volume_name = volume_parts[0], volume_parts[1], volume_parts[2]
+                adls_path = f"{catalog}/{schema}/{volume_name}/batch_predictions_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
-    # Convert to Spark DF and write to Delta table
-    spark_df = spark.createDataFrame(results_df)
-    spark_df.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-        output_table
-    )
+                # Upload using az CLI (assumes Azure login is done)
+                result = subprocess.run([
+                    "az", "storage", "blob", "upload",
+                    "--account-name", os.getenv("AZURE_STORAGE_ACCOUNT", ""),
+                    "--container-name", os.getenv(
+                        "AZURE_STORAGE_CONTAINER", ""),
+                    "--name", adls_path,
+                    "--file", local_file,
+                    "--auth-mode", "login",
+                    "--overwrite", "true"
+                ], capture_output=True, text=True)
 
-    logger.info(f"Batch predictions saved to Delta table: {output_table}")
-    spark.stop()
+                if result.returncode == 0:
+                    logger.info(
+                        f"Batch predictions saved to volume: {output_volume_path}")
+                else:
+                    logger.error(
+                        f"Failed to upload to volume: {result.stderr}")
+                    raise Exception(f"ADLS upload failed: {result.stderr}")
+            else:
+                raise ValueError(
+                    f"Invalid volume path format: {output_volume_path}")
+        else:
+            raise ValueError(
+                f"Volume path must start with /Volumes/: {output_volume_path}")
+
+    except Exception as e:
+        logger.error(f"Could not save to volume: {e}")
+        # Fallback: keep local file
+        logger.info(f"Predictions saved locally as: {local_file}")
+        raise
 
 
 def save_predictions_to_csv(
@@ -179,7 +204,8 @@ def save_predictions_to_csv(
 def main() -> int:
     # Configuration from environment
     input_path = os.getenv("BATCH_INPUT_PATH")
-    output_table = os.getenv("BATCH_OUTPUT_TABLE", "iakshaykr.default.prod")
+    output_volume_path = os.getenv(
+        "BATCH_OUTPUT_VOLUME_PATH", "/Volumes/iakshaykr/default/prod_predictions")
     output_csv = os.getenv("BATCH_OUTPUT_CSV")
     batch_size = int(os.getenv("BATCH_SIZE", str(DEFAULT_BATCH_SIZE)))
     input_size = int(
@@ -209,13 +235,13 @@ def main() -> int:
     logger.info(f"Generated {len(results)} predictions")
 
     # Save results
-    if output_table and output_table != "":
+    if output_volume_path and output_volume_path != "":
         try:
-            save_predictions_to_delta(
-                results, input_df, output_table, model_source)
+            save_predictions_to_volume(
+                results, input_df, output_volume_path, model_source)
         except ImportError as e:
             logger.warning(
-                f"Could not save to Delta table: {e}. Try CSV export instead.")
+                f"Could not save to volume: {e}. Try CSV export instead.")
 
     if output_csv:
         save_predictions_to_csv(results, input_df, output_csv, model_source)
