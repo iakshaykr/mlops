@@ -200,7 +200,7 @@ jobs:
           az storage blob upload-batch \
             --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
             --destination ${{ vars.AZURE_STORAGE_CONTAINER }} \
-            --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
+            --destination-path qa/${{ github.run_id }}-${{ github.run_attempt }} \
             --source ./promoted_model_artifacts \
             --overwrite true \
             --auth-mode login
@@ -354,3 +354,13 @@ jobs:
           PREDICTION_INPUT_SIZE: "3072"
           PYTHONPATH: .
         run: python src/training/load_and_predict.py
+
+      - name: Promote QA validated model artifacts to PROD ADLS
+        run: |
+          az storage blob upload-batch \
+            --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
+            --destination ${{ vars.AZURE_STORAGE_CONTAINER }} \
+            --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
+            --source ./promoted_model_artifacts \
+            --overwrite true \
+            --auth-mode login
