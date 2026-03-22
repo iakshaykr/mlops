@@ -148,7 +148,7 @@ jobs:
           MLFLOW_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
         run: python src/training/register_model.py
 
-  save_model:
+  model_promotion:
     runs-on: ubuntu-latest
     needs: model_registration
 
@@ -171,56 +171,21 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Get Microsoft Entra token for Azure Databricks
-        id: save_model_databricks_aad_token
+        id: promotion_databricks_aad_token
         run: |
           echo "token=$(az account get-access-token \
             --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
             --query accessToken \
             -o tsv)" >> "$GITHUB_OUTPUT"
 
-      - name: Save latest registered model
+      - name: Promote UC model version
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
           DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
-          DATABRICKS_TOKEN: ${{ steps.save_model_databricks_aad_token.outputs.token }}
-          MLFLOW_MODEL_NAME: biometric_model
-          MLFLOW_UC_CATALOG: ${{ vars.UC_CATALOG }}
-          MLFLOW_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
-          MODEL_DOWNLOAD_DIR: saved_model
-        run: python src/training/save_registered_model.py
-
-      - name: Upload saved model artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: saved-registered-model
-          path: saved_model
-
-  load_and_prediction:
-    runs-on: ubuntu-latest
-    needs: save_model
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Download saved model artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: saved-registered-model
-          path: saved_model
-
-      - name: Load model and run prediction
-        env:
-          MODEL_DIR: saved_model
-          PREDICTION_INPUT_SIZE: "3072"
-        run: python src/training/load_and_predict.py
+          DATABRICKS_TOKEN: ${{ steps.promotion_databricks_aad_token.outputs.token }}
+          SOURCE_MODEL_NAME: biometric_model
+          SOURCE_UC_CATALOG: ${{ vars.UC_CATALOG }}
+          SOURCE_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
+          DESTINATION_MODEL_NAME: iakshaykr.default.prod
+        run: python src/training/copy_uc_model_version.py

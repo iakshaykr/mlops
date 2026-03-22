@@ -85,8 +85,7 @@ GitHub Actions runs:
 - Kaggle dataset download and ADLS upload
 - Databricks job trigger via `src/training/trigger_databricks_job.py`
 - MLflow model registration via `src/training/register_model.py`
-- Registered model save/download via `src/training/save_registered_model.py`
-- Saved model load and prediction via `src/training/load_and_predict.py`
+- Unity Catalog model promotion via `src/training/copy_uc_model_version.py`
 
 ## Databricks Job Trigger
 
