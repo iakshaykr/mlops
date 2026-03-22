@@ -120,7 +120,7 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt "mlflow[databricks]"
 
       - name: Azure login for Databricks SPN
         uses: azure/login@v2
@@ -163,7 +163,7 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt "mlflow[databricks]"
 
       - name: Azure login for Databricks SPN
         uses: azure/login@v2
