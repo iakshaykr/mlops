@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from pathlib import Path
@@ -74,7 +73,11 @@ def load_input_data(input_path: str, input_size: int) -> pd.DataFrame:
     return df
 
 
-def extract_features(df: pd.DataFrame, input_size: int, feature_cols: list[str] | None = None) -> torch.Tensor:
+def extract_features(
+    df: pd.DataFrame,
+    input_size: int,
+    feature_cols: list[str] | None = None,
+) -> torch.Tensor:
     """Extract feature tensor from dataframe."""
     if feature_cols is None:
         feature_cols = [col for col in df.columns if col not in [
@@ -107,7 +110,7 @@ def batch_predict(
             predicted_classes = torch.argmax(predictions, dim=1).cpu().numpy()
             scores = predictions.cpu().numpy()
 
-            for idx, (pred_class, score) in enumerate(zip(predicted_classes, scores)):
+            for idx, (pred_class, score) in enumerate(zip(predicted_classes, scores, strict=True)):
                 results.append(
                     {
                         "batch_idx": batch_idx,
@@ -130,9 +133,9 @@ def save_predictions_to_volume(
     """Save batch predictions directly to Databricks volume."""
     try:
         from databricks.sdk import WorkspaceClient
-    except ImportError:
+    except ImportError as exc:
         raise ImportError(
-            "databricks-sdk not available. Install with: pip install databricks-sdk")
+            "databricks-sdk not available. Install with: pip install databricks-sdk") from exc
 
     # Create results dataframe
     results_df = pd.DataFrame(results)
