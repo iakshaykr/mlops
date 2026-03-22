@@ -50,9 +50,16 @@ jobs:
       - name: Download model artifacts from ADLS
         run: |
           set -eu
-          prefix="${{ inputs.validated_artifact_path }}"
+          raw_prefix="${{ inputs.validated_artifact_path }}"
+          prefix="$(printf '%s' "$raw_prefix" | tr -d '\r' | sed 's#^/*##; s#/*$##')"
           dest_root="./promoted_model_artifacts/model"
           mkdir -p "$dest_root"
+
+          echo "Resolved ADLS prefix: [$prefix]"
+          if [ -z "$prefix" ]; then
+            echo "validated_artifact_path is empty after trimming." >&2
+            exit 1
+          fi
 
           blobs=$(az storage blob list \
             --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
@@ -64,6 +71,8 @@ jobs:
 
           if [ -z "$blobs" ]; then
             echo "No blobs found under $prefix/" >&2
+            echo "Checked account=${{ vars.AZURE_STORAGE_ACCOUNT }} container=${{ vars.AZURE_STORAGE_CONTAINER }}" >&2
+            echo "If the blob exists, verify the exact prefix including any parent folders." >&2
             exit 1
           fi
 
@@ -95,7 +104,8 @@ jobs:
 
       - name: Show promotion source paths
         run: |
-          echo "ADLS source path: https://${{ vars.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ vars.AZURE_STORAGE_CONTAINER }}/${{ inputs.validated_artifact_path }}/"
+          resolved_prefix="$(printf '%s' '${{ inputs.validated_artifact_path }}' | tr -d '\r' | sed 's#^/*##; s#/*$##')"
+          echo "ADLS source path: https://${{ vars.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ vars.AZURE_STORAGE_CONTAINER }}/${resolved_prefix}/"
           echo "Local registration path: ./promoted_model_artifacts/model"
 
       - name: Promote validated UC model version to Prod
