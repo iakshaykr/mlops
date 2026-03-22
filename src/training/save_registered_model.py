@@ -7,6 +7,14 @@ from pathlib import Path
 import mlflow
 from mlflow.tracking import MlflowClient
 
+try:
+    _this_file = Path(__file__).resolve()
+except NameError:
+    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/training/save_registered_model.py")
+
+PROJECT_ROOT = _this_file.parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.training.register_model import resolve_model_name
 
 
