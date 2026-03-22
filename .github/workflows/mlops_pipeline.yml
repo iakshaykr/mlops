@@ -223,7 +223,7 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt "mlflow[databricks]"
+        run: pip install "mlflow[databricks]" torch
 
       - name: Azure login for Databricks SPN
         uses: azure/login@v2
@@ -238,15 +238,51 @@ jobs:
             --query accessToken \
             -o tsv)" >> "$GITHUB_OUTPUT"
 
-      - name: Download validated model artifacts from ADLS
+      - name: Download model artifacts from ADLS
         run: |
-          mkdir -p promoted_model_artifacts
-          az storage blob download-batch \
+          set -eu
+          prefix="${{ inputs.adls_model_path }}"
+          dest_root="./promoted_model_artifacts/model"
+          mkdir -p "$dest_root"
+
+          blobs=$(az storage blob list \
             --account-name projectmlops \
-            --destination ./promoted_model_artifacts \
-            --source datacontainer \
-            --pattern "${{ inputs.adls_model_path }}/*" \
-            --auth-mode login
+            --container-name datacontainer \
+            --prefix "$prefix/" \
+            --auth-mode login \
+            --query "[].name" \
+            -o tsv)
+
+          if [ -z "$blobs" ]; then
+            echo "No blobs found under $prefix/" >&2
+            exit 1
+          fi
+
+          while IFS= read -r blob_name; do
+            [ -n "$blob_name" ] || continue
+
+            case "$blobs" in
+              *"$blob_name/"*)
+                echo "Skipping prefix marker blob: $blob_name"
+                continue
+                ;;
+            esac
+
+            relative_path="${blob_name#"$prefix/"}"
+            target_path="$dest_root/$relative_path"
+            mkdir -p "$(dirname "$target_path")"
+
+            az storage blob download \
+              --account-name projectmlops \
+              --container-name datacontainer \
+              --name "$blob_name" \
+              --file "$target_path" \
+              --auth-mode login \
+              --overwrite true \
+              --no-progress
+          done <<EOF
+          $blobs
+          EOF
 
       - name: Show promotion source paths
         run: |
