@@ -191,12 +191,6 @@ jobs:
           VALIDATION_ONLY: "true"
         run: python src/training/copy_uc_model_version.py
 
-      - name: Upload validated model artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: validated-uc-model
-          path: promoted_model_artifacts
-
       - name: Upload validated model artifacts to ADLS
         run: |
           az storage blob upload-batch \
@@ -223,12 +217,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt "mlflow[databricks]"
 
-      - name: Download validated model artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: validated-uc-model
-          path: promoted_model_artifacts
-
       - name: Azure login for Databricks SPN
         uses: azure/login@v2
         with:
@@ -242,6 +230,15 @@ jobs:
             --query accessToken \
             -o tsv)" >> "$GITHUB_OUTPUT"
 
+      - name: Download validated model artifacts from ADLS
+        run: |
+          mkdir -p promoted_model_artifacts
+          az storage blob download-batch \
+            --account-name projectmlops \
+            --destination ./promoted_model_artifacts \
+            --source datacontainer/prod \
+            --auth-mode login
+
       - name: Promote validated UC model version
         env:
           MLFLOW_TRACKING_URI: databricks
@@ -253,5 +250,5 @@ jobs:
           SOURCE_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
           DESTINATION_MODEL_NAME: iakshaykr.default.prod
           SKIP_DOWNLOAD: "true"
-          LOCAL_MODEL_PATH: promoted_model_artifacts/biometric_model
+          LOCAL_MODEL_PATH: promoted_model_artifacts/model
         run: python src/training/copy_uc_model_version.py

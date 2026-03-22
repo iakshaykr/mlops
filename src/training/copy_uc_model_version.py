@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -20,6 +21,7 @@ DEFAULT_REGISTRY_URI = "databricks-uc"
 DEFAULT_SOURCE_MODEL_NAME = "biometric_model"
 DEFAULT_DESTINATION_MODEL_NAME = "iakshaykr.default.prod"
 DEFAULT_DOWNLOAD_DIR = "promoted_model_artifacts"
+NORMALIZED_MODEL_DIR_NAME = "model"
 
 
 def resolve_uc_model_name(
@@ -77,6 +79,14 @@ def write_github_output(name: str, value: str) -> None:
         output_file.write(f"{name}={value}\n")
 
 
+def normalize_downloaded_model_path(download_root: Path, downloaded_path: Path) -> Path:
+    normalized_path = download_root / NORMALIZED_MODEL_DIR_NAME
+    if normalized_path.exists():
+        shutil.rmtree(normalized_path)
+    shutil.copytree(downloaded_path, normalized_path)
+    return normalized_path
+
+
 def main() -> int:
     source_tracking_uri = os.getenv("SOURCE_MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
     source_registry_uri = os.getenv("SOURCE_MLFLOW_REGISTRY_URI", DEFAULT_REGISTRY_URI)
@@ -110,6 +120,7 @@ def main() -> int:
         )
         if not local_model_path.exists():
             raise FileNotFoundError(f"Downloaded model path not found: {local_model_path}")
+        local_model_path = normalize_downloaded_model_path(download_root, local_model_path)
 
     validate_downloaded_model(local_model_path)
     write_github_output("downloaded_model_path", str(local_model_path))
