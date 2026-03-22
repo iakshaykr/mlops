@@ -45,7 +45,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--wrapped",
         action="store_true",
-        help="Wrap the output as {\"features\": [...]} for JSON request-style usage.",
+        help='Wrap the output as {"features": [...]} for JSON request-style usage.',
     )
     return parser.parse_args(argv)
 
