@@ -16,6 +16,7 @@ on:
 jobs:
   prod_smoke_test:
     runs-on: ubuntu-latest
+    environment: prod
 
     steps:
       - name: Checkout repo
