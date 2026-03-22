@@ -225,7 +225,7 @@ jobs:
           MODEL_VERSION: ${{ needs.promote_to_prod.outputs.promoted_model_version }}
           PREDICTION_INPUT_SIZE: "3072"
           BATCH_INPUT_PATH: ./batch_input.csv
-          BATCH_OUTPUT_VOLUME_PATH: /Volumes/iakshaykr/default/prod_predictions
+          BATCH_OUTPUT_VOLUME_PATH: /Volumes/iakshaykr/default/prod/prod_predictions
           BATCH_SIZE: "64"
           PYTHONPATH: .
         run: python src/inference/batch_predict.py

@@ -205,7 +205,7 @@ def main() -> int:
     # Configuration from environment
     input_path = os.getenv("BATCH_INPUT_PATH")
     output_volume_path = os.getenv(
-        "BATCH_OUTPUT_VOLUME_PATH", "/Volumes/iakshaykr/default/prod_predictions")
+        "BATCH_OUTPUT_VOLUME_PATH", "/Volumes/iakshaykr/default/prod/prod_predictions/")
     output_csv = os.getenv("BATCH_OUTPUT_CSV")
     batch_size = int(os.getenv("BATCH_SIZE", str(DEFAULT_BATCH_SIZE)))
     input_size = int(
