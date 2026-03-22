@@ -245,7 +245,7 @@ jobs:
       - name: Download model artifacts from ADLS
         run: |
           set -eu
-          prefix="prod/${{ github.run_id }}-${{ github.run_attempt }}"
+          prefix="qa/${{ github.run_id }}-${{ github.run_attempt }}"
           dest_root="./promoted_model_artifacts/model"
           mkdir -p "$dest_root"
 
