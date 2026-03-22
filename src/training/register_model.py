@@ -1,5 +1,7 @@
+import logging
 import os
 import sys
+import warnings
 from pathlib import Path
 
 import mlflow
@@ -12,6 +14,19 @@ DEFAULT_MODEL_NAME = "biometric_model"
 DEFAULT_RUN_NAME = "biometric-simple-model"
 DEFAULT_TRACKING_URI = "databricks"
 DEFAULT_REGISTRY_URI = "databricks-uc"
+DEFAULT_UC_CATALOG = "iakshaykr"
+DEFAULT_UC_SCHEMA = "default"
+
+
+def _suppress_spark_connect_noise() -> None:
+    """Silence stale Spark-Connect / gRPC session warnings."""
+    logging.getLogger("pyspark.sql.connect.logging").setLevel(logging.CRITICAL)
+    logging.getLogger("pyspark.sql.connect.client.core").setLevel(logging.CRITICAL)
+    warnings.filterwarnings(
+        "ignore",
+        message=".*Spark Connect Session expired.*",
+        category=UserWarning,
+    )
 
 
 def resolve_model_name(registry_uri: str) -> str:
@@ -22,8 +37,8 @@ def resolve_model_name(registry_uri: str) -> str:
     if model_name.count(".") == 2:
         return model_name
 
-    uc_catalog = os.getenv("MLFLOW_UC_CATALOG")
-    uc_schema = os.getenv("MLFLOW_UC_SCHEMA")
+    uc_catalog = os.getenv("MLFLOW_UC_CATALOG", DEFAULT_UC_CATALOG)
+    uc_schema = os.getenv("MLFLOW_UC_SCHEMA", DEFAULT_UC_SCHEMA)
     if not uc_catalog or not uc_schema:
         raise ValueError(
             "Unity Catalog registration requires either "
@@ -53,7 +68,8 @@ def resolve_run_id(client: MlflowClient) -> str:
     )
     if not runs:
         raise ValueError(
-            f"No MLflow runs found in experiment '{experiment_name}' with run_name '{run_name}'."
+            f"No MLflow runs found in experiment '{experiment_name}' "
+            f"with run_name '{run_name}'."
         )
 
     for run in runs:
@@ -61,9 +77,11 @@ def resolve_run_id(client: MlflowClient) -> str:
             return run.info.run_id
 
     raise ValueError(
-        f"No MLflow runs found in experiment '{experiment_name}' with run_name '{run_name}' "
-        "that contain a model signature at artifact path 'model'. Rerun training with "
-        "signature logging enabled."
+        f"Found {len(runs)} run(s) in experiment '{experiment_name}' with "
+        f"run_name '{run_name}', but none contain a model signature at "
+        f"artifact path 'model'. Unity Catalog requires all models to "
+        f"include a signature. Please re-run train.py to generate a new "
+        f"run with signature logging enabled."
     )
 
 
@@ -86,6 +104,8 @@ def run_model_has_signature(run_id: str) -> bool:
 
 
 def main() -> int:
+    _suppress_spark_connect_noise()
+
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
     registry_uri = os.getenv("MLFLOW_REGISTRY_URI", DEFAULT_REGISTRY_URI)
 
@@ -113,7 +133,10 @@ def main() -> int:
 
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
+        rc = main()
     except Exception as exc:  # noqa: BLE001
         print(str(exc), file=sys.stderr)
-        raise SystemExit(1) from exc
+        rc = 1
+    # Only raise SystemExit when running as a real script, not inside IPython/notebook
+    if not hasattr(__builtins__, "__IPYTHON__") and "IPython" not in sys.modules:
+        raise SystemExit(rc)
