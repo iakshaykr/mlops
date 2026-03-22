@@ -67,47 +67,47 @@ jobs:
   #           --overwrite true \
   #           --auth-mode login
 
-  databricks_job:
-    runs-on: ubuntu-latest
-    # needs:
-    #   # - data_pipeline
-    outputs:
-      databricks_run_id: ${{ steps.trigger_databricks_job.outputs.databricks_run_id }}
-  
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
-  
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-  
-      - name: Azure login for Databricks SPN
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-  
-      - name: Get Microsoft Entra token for Azure Databricks
-        id: databricks_aad_token
-        run: |
-          echo "token=$(az account get-access-token \
-            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
-            --query accessToken \
-            -o tsv)" >> "$GITHUB_OUTPUT"
-  
-      - name: Trigger Databricks job
-        id: trigger_databricks_job
-        env:
-          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
-          DATABRICKS_JOB_ID: "286717033859672"
-          DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
-          DATABRICKS_WAIT_FOR_COMPLETION: "true"
-        run: python src/training/trigger_databricks_job.py
+  # databricks_job:
+  #   runs-on: ubuntu-latest
+  #   # needs:
+  #   #   # - data_pipeline
+  #   outputs:
+  #     databricks_run_id: ${{ steps.trigger_databricks_job.outputs.databricks_run_id }}
+  # 
+  #   steps:
+  #     - name: Checkout repo
+  #       uses: actions/checkout@v6
+  # 
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v6
+  #       with:
+  #         python-version: "3.11"
+  # 
+  #     - name: Azure login for Databricks SPN
+  #       uses: azure/login@v2
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  # 
+  #     - name: Get Microsoft Entra token for Azure Databricks
+  #       id: databricks_aad_token
+  #       run: |
+  #         echo "token=$(az account get-access-token \
+  #           --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+  #           --query accessToken \
+  #           -o tsv)" >> "$GITHUB_OUTPUT"
+  # 
+  #     - name: Trigger Databricks job
+  #       id: trigger_databricks_job
+  #       env:
+  #         DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+  #         DATABRICKS_JOB_ID: "286717033859672"
+  #         DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
+  #         DATABRICKS_WAIT_FOR_COMPLETION: "true"
+  #       run: python src/training/trigger_databricks_job.py
 
   model_registration:
     runs-on: ubuntu-latest
-    needs: databricks_job
+    # needs: databricks_job
 
     steps:
       - name: Checkout repo
