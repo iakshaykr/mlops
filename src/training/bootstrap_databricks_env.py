@@ -6,10 +6,10 @@ from pathlib import Path
 try:
     _this_file = Path(__file__).resolve()
 except NameError:
-    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/training/bootstrap_databricks_env.py")
+    _this_file = Path("/Workspace/Users/<databricks-user>/mlops/src/training/bootstrap_databricks_env.py")
 
 PROJECT_ROOT = _this_file.parents[2]
-DEFAULT_LIBRARIES_PATH = "/Volumes/iakshaykr/default/biometric_data/databricks-libs"
+DEFAULT_LIBRARIES_PATH = "/Volumes/<catalog>/<schema>/biometric_data/databricks-libs"
 
 
 def run_pip_install(*args: str) -> None:

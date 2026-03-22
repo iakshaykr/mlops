@@ -7,11 +7,11 @@ import kagglehub
 try:
     _this_file = Path(__file__).resolve()
 except NameError:
-    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/biometric/download.py")
+    _this_file = Path("/Workspace/Users/<databricks-user>/mlops/src/biometric/download.py")
 
 PROJECT_ROOT = _this_file.parents[2]
 
-VOLUME_PATH = Path("/Volumes/iakshaykr/default/biometric_data")
+VOLUME_PATH = Path("/Volumes/<catalog>/<schema>/biometric_data")
 
 
 def download_dataset(dataset_ref: str) -> Path:

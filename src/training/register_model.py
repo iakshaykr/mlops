@@ -9,12 +9,12 @@ from mlflow.tracking import MlflowClient
 import yaml
 
 
-DEFAULT_EXPERIMENT_NAME = "/Users/akshaykr9531@gmail.com/biometric-training"
+DEFAULT_EXPERIMENT_NAME = "/Users/<databricks-user>/biometric-training"
 DEFAULT_MODEL_NAME = "biometric_model"
 DEFAULT_RUN_NAME = "biometric-simple-model"
 DEFAULT_TRACKING_URI = "databricks"
 DEFAULT_REGISTRY_URI = "databricks-uc"
-DEFAULT_UC_CATALOG = "iakshaykr"
+DEFAULT_UC_CATALOG = "<catalog>"
 DEFAULT_UC_SCHEMA = "default"
 
 

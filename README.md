@@ -89,7 +89,7 @@ GitHub Actions runs:
 
 ## Databricks Job Trigger
 
-This repo includes `src/training/trigger_databricks_job.py` to call the Databricks Jobs API `run-now` endpoint for job `286717033859672`.
+This repo includes `src/training/trigger_databricks_job.py` to call the Databricks Jobs API `run-now` endpoint for a configured Databricks job.
 It also includes `src/training/register_model.py` to register the latest trained MLflow model in a separate pipeline stage.
 For Databricks jobs, `src/training/bootstrap_databricks_env.py` installs the uploaded wheel and `requirements-databricks.txt` from the configured dependency path before training starts.
 `src/training/databricks_job_entrypoint.py` bootstraps the Databricks environment and then starts training.
@@ -122,8 +122,19 @@ python src/training/train.py
 
 Required GitHub secrets:
 
-- `AZURE_CREDENTIALS`: JSON credentials for service principal `e59ca002-8cc0-4bc0-ab19-a9aac456b2d3`
+- `AZURE_CREDENTIALS`: JSON credentials for the Azure service principal used by the workflow
 
-The workflow signs in to Azure with that service principal, gets a Microsoft Entra access token for Azure Databricks resource `2ff814a6-3304-4ab8-85cb-cd0e6f879c1d`, and uses that token to call the Databricks Jobs API.
+Required GitHub Actions variables:
 
-Model registration runs after the Databricks training job completes and registers the latest run from experiment `/Users/akshaykr9531@gmail.com/biometric-training` with run name `biometric-simple-model` as model `biometric_model`.
+- `AZURE_STORAGE_ACCOUNT`: `projectmlops`
+- `AZURE_STORAGE_CONTAINER`: `datacontainer`
+- `DATABRICKS_HOST`: `https://adb-6701353639688524.4.azuredatabricks.net`
+- `MLFLOW_EXPERIMENT_NAME`: `/Users/akshaykr9531@gmail.com/biometric-training`
+- `PROD_MODEL_NAME`: `iakshaykr.default.prod`
+- `DATABRICKS_JOB_ID`: `286717033859672`
+
+Set these in GitHub under `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`.
+
+The workflow signs in to Azure, gets a Microsoft Entra access token for Azure Databricks, and uses that token to call the Databricks Jobs API.
+
+Model registration runs after the Databricks training job completes and registers the latest run from experiment `/Users/<databricks-user>/biometric-training` with run name `biometric-simple-model` as model `biometric_model`.

@@ -7,7 +7,7 @@ import torch
 
 
 DEFAULT_MODEL_DIR = "saved_model"
-DEFAULT_MODEL_NAME = "iakshaykr.default.prod"
+DEFAULT_MODEL_NAME = "catalog.schema.prod_model"
 DEFAULT_INPUT_SIZE = 3072
 
 

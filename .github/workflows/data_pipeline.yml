@@ -48,8 +48,8 @@ jobs:
     - name: Upload to ADLS
       run: |
         az storage blob upload-batch \
-          --account-name projectmlops \
-          --destination datacontainer \
+          --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
+          --destination ${{ vars.AZURE_STORAGE_CONTAINER }} \
           --source ./data \
           --overwrite true \
           --auth-mode login \

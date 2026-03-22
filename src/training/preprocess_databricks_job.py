@@ -7,7 +7,7 @@ import yaml
 try:
     _this_file = Path(__file__).resolve()
 except NameError:
-    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/training/preprocess_databricks_job.py")
+    _this_file = Path("/Workspace/Users/<databricks-user>/mlops/src/training/preprocess_databricks_job.py")
 
 PROJECT_ROOT = _this_file.parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))

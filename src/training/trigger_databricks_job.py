@@ -6,8 +6,8 @@ import urllib.error
 import urllib.request
 
 
-DEFAULT_DATABRICKS_HOST = "https://adb-6701353639688524.4.azuredatabricks.net"
-DEFAULT_JOB_ID = 286717033859672
+DEFAULT_DATABRICKS_HOST = "https://<databricks-workspace-host>"
+DEFAULT_JOB_ID = 123456789012345
 DEFAULT_POLL_INTERVAL_SECONDS = 30
 DEFAULT_TIMEOUT_SECONDS = 7200
 

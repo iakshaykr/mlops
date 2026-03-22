@@ -10,7 +10,7 @@ from mlflow.tracking import MlflowClient
 try:
     _this_file = Path(__file__).resolve()
 except NameError:
-    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/training/copy_uc_model_version.py")
+    _this_file = Path("/Workspace/Users/<databricks-user>/mlops/src/training/copy_uc_model_version.py")
 
 PROJECT_ROOT = _this_file.parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -19,7 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 DEFAULT_TRACKING_URI = "databricks"
 DEFAULT_REGISTRY_URI = "databricks-uc"
 DEFAULT_SOURCE_MODEL_NAME = "biometric_model"
-DEFAULT_DESTINATION_MODEL_NAME = "iakshaykr.default.prod"
+DEFAULT_DESTINATION_MODEL_NAME = "catalog.schema.prod_model"
 DEFAULT_DOWNLOAD_DIR = "promoted_model_artifacts"
 NORMALIZED_MODEL_DIR_NAME = "model"
 

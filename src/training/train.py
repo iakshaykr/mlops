@@ -9,7 +9,7 @@ import numpy as np
 try:
     _this_file = Path(__file__).resolve()
 except NameError:
-    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/training/train.py")
+    _this_file = Path("/Workspace/Users/<databricks-user>/mlops/src/training/train.py")
 
 PROJECT_ROOT = _this_file.parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -140,7 +140,7 @@ def main() -> None:
             f"dataset feature size={input_size}."
         )
 
-    mlflow.set_experiment("/Users/akshaykr9531@gmail.com/biometric-training")
+    mlflow.set_experiment("/Users/<databricks-user>/biometric-training")
 
     with mlflow.start_run(run_name="biometric-simple-model") as run:
         # Log all config parameters

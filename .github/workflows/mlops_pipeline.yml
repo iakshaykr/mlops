@@ -61,8 +61,8 @@ jobs:
       - name: Upload to ADLS
         run: |
           az storage blob upload-batch \
-            --account-name projectmlops \
-            --destination datacontainer \
+            --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
+            --destination ${{ vars.AZURE_STORAGE_CONTAINER }} \
             --source ./data \
             --overwrite true \
             --auth-mode login
@@ -99,8 +99,8 @@ jobs:
   #     - name: Trigger Databricks job
   #       id: trigger_databricks_job
   #       env:
-  #         DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
-  #         DATABRICKS_JOB_ID: "286717033859672"
+  #         DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+  #         DATABRICKS_JOB_ID: ${{ vars.DATABRICKS_JOB_ID }}
   #         DATABRICKS_AAD_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
   #         DATABRICKS_WAIT_FOR_COMPLETION: "true"
   #       run: python src/training/trigger_databricks_job.py
@@ -139,9 +139,9 @@ jobs:
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
-          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ steps.registration_databricks_aad_token.outputs.token }}
-          MLFLOW_EXPERIMENT_NAME: /Users/akshaykr9531@gmail.com/biometric-training
+          MLFLOW_EXPERIMENT_NAME: ${{ vars.MLFLOW_EXPERIMENT_NAME }}
           MLFLOW_RUN_NAME: biometric-simple-model
           MLFLOW_MODEL_NAME: biometric_model
           MLFLOW_UC_CATALOG: ${{ vars.UC_CATALOG }}
@@ -185,7 +185,7 @@ jobs:
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
-          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ steps.promotion_databricks_aad_token.outputs.token }}
           SOURCE_MODEL_NAME: biometric_model
           SOURCE_UC_CATALOG: ${{ vars.UC_CATALOG }}
@@ -197,8 +197,8 @@ jobs:
       - name: Upload validated model artifacts to ADLS
         run: |
           az storage blob upload-batch \
-            --account-name projectmlops \
-            --destination datacontainer \
+            --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
+            --destination ${{ vars.AZURE_STORAGE_CONTAINER }} \
             --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
             --source ./promoted_model_artifacts \
             --overwrite true \
@@ -249,8 +249,8 @@ jobs:
           mkdir -p "$dest_root"
 
           blobs=$(az storage blob list \
-            --account-name projectmlops \
-            --container-name datacontainer \
+            --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ vars.AZURE_STORAGE_CONTAINER }} \
             --prefix "$prefix/" \
             --auth-mode login \
             --query "[].name" \
@@ -276,8 +276,8 @@ jobs:
             mkdir -p "$(dirname "$target_path")"
 
             az storage blob download \
-              --account-name projectmlops \
-              --container-name datacontainer \
+              --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
+              --container-name ${{ vars.AZURE_STORAGE_CONTAINER }} \
               --name "$blob_name" \
               --file "$target_path" \
               --auth-mode login \
@@ -289,7 +289,7 @@ jobs:
 
       - name: Show promotion source paths
         run: |
-          echo "ADLS source path: https://projectmlops.blob.core.windows.net/datacontainer/prod/${{ github.run_id }}-${{ github.run_attempt }}/"
+          echo "ADLS source path: https://${{ vars.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ vars.AZURE_STORAGE_CONTAINER }}/prod/${{ github.run_id }}-${{ github.run_attempt }}/"
           echo "Local registration path: ./promoted_model_artifacts/model"
 
       - name: Promote validated UC model version
@@ -297,12 +297,12 @@ jobs:
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
-          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ steps.promotion_apply_databricks_aad_token.outputs.token }}
           SOURCE_MODEL_NAME: biometric_model
           SOURCE_UC_CATALOG: ${{ vars.UC_CATALOG }}
           SOURCE_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
-          DESTINATION_MODEL_NAME: iakshaykr.default.prod
+          DESTINATION_MODEL_NAME: ${{ vars.PROD_MODEL_NAME }}
           SKIP_DOWNLOAD: "true"
           LOCAL_MODEL_PATH: promoted_model_artifacts/model
           PYTHONPATH: .
@@ -346,9 +346,9 @@ jobs:
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
-          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
-          MODEL_NAME: iakshaykr.default.prod
+          MODEL_NAME: ${{ vars.PROD_MODEL_NAME }}
           MODEL_VERSION: ${{ needs.promote_to_prod.outputs.promoted_model_version }}
           PREDICTION_INPUT_SIZE: "3072"
           PYTHONPATH: .
