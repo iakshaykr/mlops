@@ -102,6 +102,12 @@ Architecture explanation:
 - production smoke test
 - optional final `prod_live` prediction using a supplied feature vector
 
+[`prod_rollback.yml`](/Users/akshaykumar/mlops/mlops/.github/workflows/prod_rollback.yml) runs:
+
+- rollback by re-promoting an older production model version as the newest prod version
+- production smoke test after rollback
+- optional final rollback prediction using a supplied feature vector
+
 ## Tests
 
 The repo does include automated tests in [`tests/test_pipeline.py`](/Users/akshaykumar/mlops/mlops/tests/test_pipeline.py).
@@ -274,6 +280,16 @@ Prod release workflow progression:
 - `promote_to_prod`
 - `prod_smoke_test`
 - `prod_live` when `prod_live_input_values` is provided on manual dispatch
+
+Prod rollback workflow progression:
+
+- `rollback_to_prod`
+- `prod_smoke_test`
+- `prod_live` when `rollback_live_input_values` is provided on manual dispatch
+
+For the rollback workflow, provide `rollback_source_version` as an existing version from `PROD_MODEL_NAME`, for example:
+
+- `3`
 
 For `prod_live`, provide `prod_live_input_values` as either:
 

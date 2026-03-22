@@ -1,0 +1,157 @@
+name: Prod Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_source_version:
+        description: "Existing production model version to roll back to, for example 3"
+        required: true
+      rollback_live_input_values:
+        description: "Optional JSON array or comma-separated feature vector for a final rollback prediction"
+        required: false
+        default: ""
+
+jobs:
+  rollback_to_prod:
+    runs-on: ubuntu-latest
+    environment: prod
+    outputs:
+      promoted_model_version: ${{ steps.rollback_to_prod.outputs.promoted_model_version }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install "mlflow[databricks]"
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --no-deps -e .
+
+      - name: Azure login for Databricks SPN
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Microsoft Entra token for Azure Databricks
+        id: rollback_databricks_aad_token
+        run: |
+          echo "token=$(az account get-access-token \
+            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+            --query accessToken \
+            -o tsv)" >> "$GITHUB_OUTPUT"
+
+      - name: Re-promote selected prod version as latest prod version
+        id: rollback_to_prod
+        env:
+          MLFLOW_TRACKING_URI: databricks
+          MLFLOW_REGISTRY_URI: databricks-uc
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ steps.rollback_databricks_aad_token.outputs.token }}
+          SOURCE_MODEL_NAME: ${{ vars.PROD_MODEL_NAME }}
+          SOURCE_MODEL_VERSION: ${{ inputs.rollback_source_version }}
+          DESTINATION_MODEL_NAME: ${{ vars.PROD_MODEL_NAME }}
+          PYTHONPATH: .
+        run: python src/training/copy_uc_model_version.py
+
+  prod_smoke_test:
+    runs-on: ubuntu-latest
+    needs: rollback_to_prod
+    environment: prod
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install "mlflow[databricks]"
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --no-deps -e .
+
+      - name: Azure login for Databricks SPN
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Microsoft Entra token for Azure Databricks
+        id: databricks_aad_token
+        run: |
+          echo "token=$(az account get-access-token \
+            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+            --query accessToken \
+            -o tsv)" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test rolled-back prod model
+        env:
+          MLFLOW_TRACKING_URI: databricks
+          MLFLOW_REGISTRY_URI: databricks-uc
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
+          MODEL_NAME: ${{ vars.PROD_MODEL_NAME }}
+          MODEL_VERSION: ${{ needs.rollback_to_prod.outputs.promoted_model_version }}
+          PREDICTION_INPUT_SIZE: "3072"
+          PYTHONPATH: .
+        run: python src/training/load_and_predict.py
+
+  prod_live:
+    runs-on: ubuntu-latest
+    needs:
+      - rollback_to_prod
+      - prod_smoke_test
+    if: ${{ inputs.rollback_live_input_values != '' }}
+    environment: prod
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install "mlflow[databricks]"
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --no-deps -e .
+
+      - name: Azure login for Databricks SPN
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Microsoft Entra token for Azure Databricks
+        id: databricks_aad_token
+        run: |
+          echo "token=$(az account get-access-token \
+            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+            --query accessToken \
+            -o tsv)" >> "$GITHUB_OUTPUT"
+
+      - name: Run final rollback prediction
+        env:
+          MLFLOW_TRACKING_URI: databricks
+          MLFLOW_REGISTRY_URI: databricks-uc
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
+          MODEL_NAME: ${{ vars.PROD_MODEL_NAME }}
+          MODEL_VERSION: ${{ needs.rollback_to_prod.outputs.promoted_model_version }}
+          PREDICTION_INPUT_SIZE: "3072"
+          PREDICTION_VALUES: ${{ inputs.rollback_live_input_values }}
+          PYTHONPATH: .
+        run: python src/training/load_and_predict.py
