@@ -69,11 +69,7 @@ jobs:
 
   databricks_job:
     runs-on: ubuntu-latest
-    if: ${{ false }}
-    needs:
-      - data_pipeline
-    outputs:
-      databricks_run_id: ${{ steps.trigger_databricks_job.outputs.databricks_run_id }}
+    needs: data_pipeline
   
     steps:
       - name: Checkout repo
