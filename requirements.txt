@@ -3,6 +3,7 @@ pandas
 numpy
 pyyaml
 pytest
+ruff
 mlflow
 kagglehub
 Pillow

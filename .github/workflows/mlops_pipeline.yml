@@ -23,6 +23,10 @@ jobs:
         run: pip install -r requirements.txt
       - name: Compile Python files
         run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/biometric/preprocess.py src/biometric/preprocess_spark.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py src/training/save_registered_model.py src/training/load_and_predict.py src/training/preprocess_databricks_job.py tests/test_pipeline.py
+      - name: Run lint checks
+        run: ruff check .
+      - name: Run formatting checks
+        run: ruff format --check .
       - name: Run tests
         run: pytest -q
 
@@ -506,7 +510,9 @@ jobs:
 
   prod_live:
     runs-on: ubuntu-latest
-    needs: prod_smoke_test
+    needs:
+      - promote_to_prod
+      - prod_smoke_test
     if: ${{ inputs.prod_live_input_values != '' }}
     environment: prod
 

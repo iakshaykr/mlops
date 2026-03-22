@@ -48,25 +48,39 @@ def preprocess_dataset_spark(
         for sample_index, sample in enumerate(samples)
     ]
 
-    records = spark_context.parallelize(tasks, max(1, num_partitions)).map(
-        lambda task: preprocess_sample_to_file(
-            sample_index=task[0],
-            left_path=task[1],
-            right_path=task[2],
-            fingerprint_path=task[3],
-            label=task[4],
-            image_size=task[5],
-            features_dir=task[6],
+    records = (
+        spark_context.parallelize(tasks, max(1, num_partitions))
+        .map(
+            lambda task: preprocess_sample_to_file(
+                sample_index=task[0],
+                left_path=task[1],
+                right_path=task[2],
+                fingerprint_path=task[3],
+                label=task[4],
+                image_size=task[5],
+                features_dir=task[6],
+            )
         )
-    ).collect()
+        .collect()
+    )
 
     with open(metadata_path, "w", encoding="utf-8") as metadata_file:
-        json.dump(build_metadata(dataset_root, image_size, samples, records, mode="spark"), metadata_file)
+        json.dump(
+            build_metadata(
+                dataset_root,
+                image_size,
+                samples,
+                records,
+                mode="spark",
+            ),
+            metadata_file,
+        )
 
     return output_root
 
 
 if __name__ == "__main__":
     raise SystemExit(
-        "Import `preprocess_dataset_spark` from a Databricks job or notebook and call it with explicit paths."
+        "Import `preprocess_dataset_spark` from a Databricks job or notebook "
+        "and call it with explicit paths."
     )

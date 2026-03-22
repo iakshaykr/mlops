@@ -1,15 +1,16 @@
+import json
+import logging
 import os
-import sys
 from pathlib import Path
 
 import mlflow.pytorch
-import json
 import torch
-
 
 DEFAULT_MODEL_DIR = "saved_model"
 DEFAULT_MODEL_NAME = "catalog.schema.prod_model"
 DEFAULT_INPUT_SIZE = 3072
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_model_path(model_dir: Path) -> Path:
@@ -83,17 +84,19 @@ def main() -> int:
         prediction = model(sample_input)
 
     predicted_class = int(torch.argmax(prediction, dim=1).item())
-    print(
-        f"Prediction successful. model_source={model_source}, "
-        f"output_shape={tuple(prediction.shape)}, "
-        f"predicted_class={predicted_class}"
+    logger.info(
+        "Prediction successful. model_source=%s output_shape=%s predicted_class=%s",
+        model_source,
+        tuple(prediction.shape),
+        predicted_class,
     )
     return 0
 
 
 if __name__ == "__main__":
     try:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
         raise SystemExit(main())
     except Exception as exc:  # noqa: BLE001
-        print(str(exc), file=sys.stderr)
+        logger.exception("Prediction failed: %s", exc)
         raise SystemExit(1) from exc

@@ -1,15 +1,16 @@
 import json
+import logging
 import os
-import sys
 import time
 import urllib.error
 import urllib.request
-
 
 DEFAULT_DATABRICKS_HOST = "https://<databricks-workspace-host>"
 DEFAULT_JOB_ID = 123456789012345
 DEFAULT_POLL_INTERVAL_SECONDS = 30
 DEFAULT_TIMEOUT_SECONDS = 7200
+
+logger = logging.getLogger(__name__)
 
 
 def databricks_api_request(
@@ -38,9 +39,7 @@ def databricks_api_request(
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"Databricks API returned HTTP {exc.code}: {error_body}"
-        ) from exc
+        raise RuntimeError(f"Databricks API returned HTTP {exc.code}: {error_body}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Failed to reach Databricks host {host}: {exc.reason}") from exc
 
@@ -74,10 +73,12 @@ def wait_for_run_completion(host: str, token: str, run_id: int) -> None:
         result_state = state.get("result_state")
         state_message = state.get("state_message", "")
 
-        print(
-            f"Databricks run {run_id}: "
-            f"life_cycle_state={life_cycle_state}, result_state={result_state}, "
-            f"message={state_message}"
+        logger.info(
+            "Databricks run %s: life_cycle_state=%s result_state=%s message=%s",
+            run_id,
+            life_cycle_state,
+            result_state,
+            state_message,
         )
 
         if life_cycle_state == "TERMINATED":
@@ -107,9 +108,7 @@ def trigger_job() -> int:
     job_id = int(os.getenv("DATABRICKS_JOB_ID", str(DEFAULT_JOB_ID)))
 
     if not token:
-        raise ValueError(
-            "DATABRICKS_AAD_TOKEN is required to trigger a Databricks job."
-        )
+        raise ValueError("DATABRICKS_AAD_TOKEN is required to trigger a Databricks job.")
 
     response_body = databricks_api_request(
         host=host,
@@ -123,9 +122,11 @@ def trigger_job() -> int:
     number_in_job = response_body.get("number_in_job")
     wait_for_completion = os.getenv("DATABRICKS_WAIT_FOR_COMPLETION", "true").lower() == "true"
 
-    print(
-        f"Triggered Databricks job {job_id}. "
-        f"run_id={run_id}, number_in_job={number_in_job}"
+    logger.info(
+        "Triggered Databricks job %s. run_id=%s number_in_job=%s",
+        job_id,
+        run_id,
+        number_in_job,
     )
     write_github_output("databricks_run_id", str(run_id))
 
@@ -137,7 +138,8 @@ def trigger_job() -> int:
 
 if __name__ == "__main__":
     try:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
         raise SystemExit(trigger_job())
     except Exception as exc:  # noqa: BLE001
-        print(str(exc), file=sys.stderr)
+        logger.exception("Databricks job trigger failed: %s", exc)
         raise SystemExit(1) from exc

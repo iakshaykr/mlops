@@ -1,7 +1,7 @@
-import sys
-from pathlib import Path
 import subprocess
+import sys
 import textwrap
+from pathlib import Path
 
 try:
     _this_file = Path(__file__).resolve()
@@ -10,10 +10,9 @@ except NameError:
 
 sys.path.insert(0, str(_this_file.parents[1]))
 
-from PIL import Image
-
 import numpy as np
 import pytest
+from PIL import Image
 
 from src.biometric.preprocess import load_metadata, preprocess_dataset
 
@@ -54,7 +53,9 @@ def _build_sample_dataset(tmp_path: Path) -> Path:
 
 def test_dataset_and_model_smoke(tmp_path: Path) -> None:
     if not _torch_runtime_available():
-        pytest.skip("Skipping torch-dependent smoke test because local torch runtime is unavailable.")
+        pytest.skip(
+            "Skipping torch-dependent smoke test because local torch runtime is unavailable."
+        )
 
     dataset_root = _build_sample_dataset(tmp_path)
     smoke_script = textwrap.dedent(

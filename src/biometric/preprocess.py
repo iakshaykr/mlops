@@ -1,8 +1,8 @@
+import hashlib
 import json
 import shutil
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-import hashlib
 
 import numpy as np
 from PIL import Image
@@ -11,11 +11,7 @@ from PIL import Image
 def discover_samples(dataset_root: Path) -> list[tuple[Path, Path, Path, int]]:
     samples: list[tuple[Path, Path, Path, int]] = []
     subject_dirs = sorted(
-        [
-            path
-            for path in dataset_root.iterdir()
-            if path.is_dir() and path.name.isdigit()
-        ],
+        [path for path in dataset_root.iterdir() if path.is_dir() and path.name.isdigit()],
         key=lambda path: int(path.name),
     )
 
@@ -26,9 +22,7 @@ def discover_samples(dataset_root: Path) -> list[tuple[Path, Path, Path, int]]:
         if not left_dir.is_dir() or not right_dir.is_dir() or not fingerprint_dir.is_dir():
             continue
 
-        left_images = sorted(
-            [path for path in left_dir.iterdir() if path.suffix.lower() == ".bmp"]
-        )
+        left_images = sorted([path for path in left_dir.iterdir() if path.suffix.lower() == ".bmp"])
         right_images = sorted(
             [path for path in right_dir.iterdir() if path.suffix.lower() == ".bmp"]
         )
@@ -38,9 +32,7 @@ def discover_samples(dataset_root: Path) -> list[tuple[Path, Path, Path, int]]:
 
         sample_count = min(len(left_images), len(right_images), len(fingerprint_images))
         for idx in range(sample_count):
-            samples.append(
-                (left_images[idx], right_images[idx], fingerprint_images[idx], label)
-            )
+            samples.append((left_images[idx], right_images[idx], fingerprint_images[idx], label))
 
     return samples
 
@@ -84,7 +76,7 @@ def build_metadata(
 def load_metadata(metadata_path: Path) -> dict | None:
     if not metadata_path.is_file():
         return None
-    with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+    with open(metadata_path, encoding="utf-8") as metadata_file:
         return json.load(metadata_file)
 
 
@@ -190,6 +182,15 @@ def preprocess_dataset(
             records = list(executor.map(_preprocess_sample, tasks))
 
     with open(metadata_path, "w", encoding="utf-8") as metadata_file:
-        json.dump(build_metadata(dataset_root, image_size, samples, records, mode="local"), metadata_file)
+        json.dump(
+            build_metadata(
+                dataset_root,
+                image_size,
+                samples,
+                records,
+                mode="local",
+            ),
+            metadata_file,
+        )
 
     return output_root

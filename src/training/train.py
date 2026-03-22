@@ -1,8 +1,10 @@
+import logging
 import os
 import random
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -14,22 +16,27 @@ except NameError:
 PROJECT_ROOT = _this_file.parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-import torch
-from torch.utils.data import DataLoader
-import yaml
-import mlflow
-import mlflow.pytorch
-from mlflow.models import infer_signature
+import mlflow  # noqa: E402
+import mlflow.pytorch  # noqa: E402
+import torch  # noqa: E402
+import yaml  # noqa: E402
+from mlflow.models import infer_signature  # noqa: E402
+from torch.utils.data import DataLoader  # noqa: E402
 
-from src.biometric.download import prepare_local_data
-from src.biometric.loader import BiometricDataset, PreprocessedBiometricDataset
-from src.biometric.model import SimpleModel
-from src.biometric.preprocess import preprocess_dataset
+from src.biometric.download import prepare_local_data  # noqa: E402
+from src.biometric.loader import BiometricDataset, PreprocessedBiometricDataset  # noqa: E402
+from src.biometric.model import SimpleModel  # noqa: E402
+from src.biometric.preprocess import preprocess_dataset  # noqa: E402
+
+DEFAULT_EXPERIMENT_NAME = "/Users/<databricks-user>/biometric-training"
+DEFAULT_RUN_NAME = "biometric-simple-model"
+
+logger = logging.getLogger(__name__)
 
 
-def load_config(config_path: Path | None = None) -> dict:
+def load_config(config_path: Path | None = None) -> dict[str, Any]:
     config_path = config_path or PROJECT_ROOT / "configs" / "config.yaml"
-    with open(config_path, "r", encoding="utf-8") as config_file:
+    with open(config_path, encoding="utf-8") as config_file:
         return yaml.safe_load(config_file)
 
 
@@ -49,7 +56,9 @@ def seed_worker(worker_id: int) -> None:
     random.seed(worker_seed)
 
 
-def build_loader(dataset: BiometricDataset, config: dict) -> DataLoader:
+def build_loader(
+    dataset: BiometricDataset | PreprocessedBiometricDataset, config: dict[str, Any]
+) -> DataLoader:
     data_config = config["data"]
     seed = config.get("seed", 42)
     num_workers = data_config.get("num_workers", 0)
@@ -70,7 +79,9 @@ def build_loader(dataset: BiometricDataset, config: dict) -> DataLoader:
     )
 
 
-def prepare_training_dataset(config: dict, dataset_root: Path):
+def prepare_training_dataset(
+    config: dict[str, Any], dataset_root: Path
+) -> BiometricDataset | PreprocessedBiometricDataset:
     preprocessing_config = config["data"].get("preprocessing", {})
     if not preprocessing_config.get("enabled", False):
         return BiometricDataset(
@@ -98,19 +109,19 @@ def prepare_training_dataset(config: dict, dataset_root: Path):
     return PreprocessedBiometricDataset(preprocessed_root=str(cache_root))
 
 
-def resolve_dataset_root(config: dict) -> Path:
+def resolve_dataset_root(config: dict[str, Any]) -> Path:
     """Prefer UC volume path (ADLS) if available, else fall back to local + Kaggle download."""
     volume_path = config["data"].get("volume_path")
     if volume_path:
         vp = Path(volume_path)
         if vp.exists():
-            print(f"Using dataset from UC volume: {vp}")
+            logger.info("Using dataset from UC volume: %s", vp)
             return vp
-        print(f"UC volume path not found ({vp}), falling back to local path.")
+        logger.warning("UC volume path not found (%s), falling back to local path.", vp)
 
     dataset_root = PROJECT_ROOT / config["data"]["raw_path"]
     if not dataset_root.exists():
-        print("Local dataset not found. Downloading from Kaggle...")
+        logger.info("Local dataset not found. Downloading from Kaggle.")
         prepare_local_data(
             dataset_ref=config["data"]["kaggle_dataset"],
             raw_target=config["data"]["raw_path"],
@@ -127,9 +138,7 @@ def main() -> None:
     loader = build_loader(dataset, config)
 
     if len(dataset) == 0:
-        raise ValueError(
-            "Dataset is empty. Download the Kaggle dataset or verify `data.raw_path`."
-        )
+        raise ValueError("Dataset is empty. Download the Kaggle dataset or verify `data.raw_path`.")
 
     sample_features, _ = dataset[0]
     input_size = sample_features.numel()
@@ -140,26 +149,34 @@ def main() -> None:
             f"dataset feature size={input_size}."
         )
 
-    mlflow.set_experiment("/Users/<databricks-user>/biometric-training")
+    experiment_name = os.getenv("MLFLOW_EXPERIMENT_NAME", DEFAULT_EXPERIMENT_NAME)
+    run_name = os.getenv("MLFLOW_RUN_NAME", DEFAULT_RUN_NAME)
+    mlflow.set_experiment(experiment_name)
 
-    with mlflow.start_run(run_name="biometric-simple-model") as run:
+    with mlflow.start_run(run_name=run_name) as run:
         # Log all config parameters
-        mlflow.log_params({
-            "seed": config.get("seed", 42),
-            "image_size": config["data"]["image_size"],
-            "batch_size": config["data"]["batch_size"],
-            "num_workers": config["data"].get("num_workers", 0),
-            "pin_memory": config["data"].get("pin_memory", False),
-            "preprocessing_enabled": config["data"].get("preprocessing", {}).get("enabled", False),
-            "preprocessing_num_workers": config["data"].get("preprocessing", {}).get("num_workers", 0),
-            "epochs": config["training"]["epochs"],
-            "learning_rate": config["training"]["lr"],
-            "input_size": config["model"]["input_size"],
-            "hidden_size": config["model"]["hidden_size"],
-            "output_size": config["model"]["output_size"],
-            "dataset_size": len(dataset),
-            "data_source": str(dataset_root),
-        })
+        mlflow.log_params(
+            {
+                "seed": config.get("seed", 42),
+                "image_size": config["data"]["image_size"],
+                "batch_size": config["data"]["batch_size"],
+                "num_workers": config["data"].get("num_workers", 0),
+                "pin_memory": config["data"].get("pin_memory", False),
+                "preprocessing_enabled": config["data"]
+                .get("preprocessing", {})
+                .get("enabled", False),
+                "preprocessing_num_workers": config["data"]
+                .get("preprocessing", {})
+                .get("num_workers", 0),
+                "epochs": config["training"]["epochs"],
+                "learning_rate": config["training"]["lr"],
+                "input_size": config["model"]["input_size"],
+                "hidden_size": config["model"]["hidden_size"],
+                "output_size": config["model"]["output_size"],
+                "dataset_size": len(dataset),
+                "data_source": str(dataset_root),
+            }
+        )
 
         model = SimpleModel(
             input_size=input_size,
@@ -186,10 +203,12 @@ def main() -> None:
             mlflow.log_metric("train_loss", average_loss, step=epoch + 1)
             mlflow.log_metric("epoch_duration_seconds", epoch_duration, step=epoch + 1)
             mlflow.log_metric("samples_per_second", samples_per_second, step=epoch + 1)
-            print(f"Epoch {epoch + 1}: loss={average_loss:.4f}")
-            print(
-                f"Epoch {epoch + 1}: duration={epoch_duration:.2f}s, "
-                f"throughput={samples_per_second:.2f} samples/s"
+            logger.info(
+                "Epoch %s: loss=%.4f duration=%.2fs throughput=%.2f samples/s",
+                epoch + 1,
+                average_loss,
+                epoch_duration,
+                samples_per_second,
             )
 
         # Log final loss and the trained model
@@ -205,8 +224,14 @@ def main() -> None:
             input_example=input_example,
         )
 
-        print(f"Training done \u2014 MLflow run ID: {run.info.run_id}")
+        logger.info(
+            "Training completed. experiment=%s run_name=%s mlflow_run_id=%s",
+            experiment_name,
+            run_name,
+            run.info.run_id,
+        )
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     main()

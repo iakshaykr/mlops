@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import sys
@@ -10,7 +11,9 @@ from mlflow.tracking import MlflowClient
 try:
     _this_file = Path(__file__).resolve()
 except NameError:
-    _this_file = Path("/Workspace/Users/<databricks-user>/mlops/src/training/copy_uc_model_version.py")
+    _this_file = Path(
+        "/Workspace/Users/<databricks-user>/mlops/src/training/copy_uc_model_version.py"
+    )
 
 PROJECT_ROOT = _this_file.parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -22,6 +25,8 @@ DEFAULT_SOURCE_MODEL_NAME = "biometric_model"
 DEFAULT_DESTINATION_MODEL_NAME = "catalog.schema.prod_model"
 DEFAULT_DOWNLOAD_DIR = "promoted_model_artifacts"
 NORMALIZED_MODEL_DIR_NAME = "model"
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_uc_model_name(
@@ -152,7 +157,7 @@ def main() -> int:
     write_github_output("downloaded_model_path", str(local_model_path))
 
     if os.getenv("VALIDATION_ONLY", "false").lower() == "true":
-        print(f"Validated source model successfully at {local_model_path}")
+        logger.info("Validated source model successfully at %s", local_model_path)
         return 0
 
     destination_model_name = os.getenv(
@@ -172,16 +177,20 @@ def main() -> int:
     )
     write_github_output("promoted_model_version", str(registered_model.version))
 
-    print(
-        f"Promoted {source_uri} to {destination_model_name} as version={registered_model.version} "
-        f"using local artifacts at {local_model_path}"
+    logger.info(
+        "Promoted %s to %s as version=%s using local artifacts at %s",
+        source_uri,
+        destination_model_name,
+        registered_model.version,
+        local_model_path,
     )
     return 0
 
 
 if __name__ == "__main__":
     try:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
         raise SystemExit(main())
     except Exception as exc:  # noqa: BLE001
-        print(str(exc), file=sys.stderr)
+        logger.exception("Model copy/promotion failed: %s", exc)
         raise SystemExit(1) from exc

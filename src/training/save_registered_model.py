@@ -1,15 +1,16 @@
+import logging
 import os
-import sys
 from pathlib import Path
 
 import mlflow
 from mlflow.tracking import MlflowClient
 
-
 DEFAULT_MODEL_NAME = "biometric_model"
 DEFAULT_TRACKING_URI = "databricks"
 DEFAULT_REGISTRY_URI = "databricks-uc"
 DEFAULT_OUTPUT_DIR = "saved_model"
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_model_name(registry_uri: str) -> str:
@@ -71,8 +72,11 @@ def main() -> int:
         dst_path=str(output_dir),
     )
 
-    print(
-        f"Saved registered model '{model_name}' version={version} to {local_model_path}"
+    logger.info(
+        "Saved registered model '%s' version=%s to %s",
+        model_name,
+        version,
+        local_model_path,
     )
     write_github_output("saved_model_path", str(local_model_path))
     write_github_output("saved_model_version", version)
@@ -81,7 +85,8 @@ def main() -> int:
 
 if __name__ == "__main__":
     try:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
         raise SystemExit(main())
     except Exception as exc:  # noqa: BLE001
-        print(str(exc), file=sys.stderr)
+        logger.exception("Saving registered model failed: %s", exc)
         raise SystemExit(1) from exc

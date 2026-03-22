@@ -5,9 +5,8 @@ import warnings
 from pathlib import Path
 
 import mlflow
-from mlflow.tracking import MlflowClient
 import yaml
-
+from mlflow.tracking import MlflowClient
 
 DEFAULT_EXPERIMENT_NAME = "/Users/<databricks-user>/biometric-training"
 DEFAULT_MODEL_NAME = "biometric_model"
@@ -16,6 +15,8 @@ DEFAULT_TRACKING_URI = "databricks"
 DEFAULT_REGISTRY_URI = "databricks-uc"
 DEFAULT_UC_CATALOG = "<catalog>"
 DEFAULT_UC_SCHEMA = "default"
+
+logger = logging.getLogger(__name__)
 
 
 def _suppress_spark_connect_noise() -> None:
@@ -68,8 +69,7 @@ def resolve_run_id(client: MlflowClient) -> str:
     )
     if not runs:
         raise ValueError(
-            f"No MLflow runs found in experiment '{experiment_name}' "
-            f"with run_name '{run_name}'."
+            f"No MLflow runs found in experiment '{experiment_name}' with run_name '{run_name}'."
         )
 
     for run in runs:
@@ -96,7 +96,7 @@ def run_model_has_signature(run_id: str) -> bool:
     if not mlmodel_path.is_file():
         return False
 
-    with open(mlmodel_path, "r", encoding="utf-8") as mlmodel_file:
+    with open(mlmodel_path, encoding="utf-8") as mlmodel_file:
         mlmodel_data = yaml.safe_load(mlmodel_file)
 
     signature = mlmodel_data.get("signature")
@@ -119,23 +119,26 @@ def main() -> int:
 
     if registry_uri == "databricks-uc" and model_name.count(".") != 2:
         raise ValueError(
-            "Unity Catalog model registration requires "
-            "`catalog_name.schema_name.model_name`."
+            "Unity Catalog model registration requires `catalog_name.schema_name.model_name`."
         )
 
     result = mlflow.register_model(model_uri=model_uri, name=model_name)
-    print(
-        f"Registered model '{model_name}' from run_id={run_id} as version={result.version} "
-        f"using registry_uri={registry_uri}"
+    logger.info(
+        "Registered model '%s' from run_id=%s as version=%s using registry_uri=%s",
+        model_name,
+        run_id,
+        result.version,
+        registry_uri,
     )
     return 0
 
 
 if __name__ == "__main__":
     try:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
         rc = main()
     except Exception as exc:  # noqa: BLE001
-        print(str(exc), file=sys.stderr)
+        logger.exception("Model registration failed: %s", exc)
         rc = 1
     # Only raise SystemExit when running as a real script, not inside IPython/notebook
     if not hasattr(__builtins__, "__IPYTHON__") and "IPython" not in sys.modules:
