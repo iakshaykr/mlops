@@ -170,6 +170,7 @@ def main() -> int:
         model_uri=str(local_model_path),
         name=destination_model_name,
     )
+    write_github_output("promoted_model_version", str(registered_model.version))
 
     print(
         f"Promoted {source_uri} to {destination_model_name} as version={registered_model.version} "

@@ -6,11 +6,6 @@ on:
   #     - main
   #     - feature/biometric
   workflow_dispatch:
-    inputs:
-      adls_model_path:
-        description: "ADLS artifact path under datacontainer, for example prod/10"
-        required: true
-        type: string
 
 jobs:
   test:
@@ -214,6 +209,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: model_validation
     environment: prod
+    outputs:
+      promoted_model_version: ${{ steps.promote_to_prod.outputs.promoted_model_version }}
 
     steps:
       - name: Checkout repo
@@ -247,7 +244,7 @@ jobs:
       - name: Download model artifacts from ADLS
         run: |
           set -eu
-          prefix="${{ inputs.adls_model_path }}"
+          prefix="prod/${{ github.run_id }}-${{ github.run_attempt }}"
           dest_root="./promoted_model_artifacts/model"
           mkdir -p "$dest_root"
 
@@ -292,10 +289,11 @@ jobs:
 
       - name: Show promotion source paths
         run: |
-          echo "ADLS source path: https://projectmlops.blob.core.windows.net/datacontainer/${{ inputs.adls_model_path }}/"
+          echo "ADLS source path: https://projectmlops.blob.core.windows.net/datacontainer/prod/${{ github.run_id }}-${{ github.run_attempt }}/"
           echo "Local registration path: ./promoted_model_artifacts/model"
 
       - name: Promote validated UC model version
+        id: promote_to_prod
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
@@ -309,3 +307,49 @@ jobs:
           LOCAL_MODEL_PATH: promoted_model_artifacts/model
           PYTHONPATH: .
         run: python src/training/copy_uc_model_version.py
+
+  prod_smoke_test:
+    runs-on: ubuntu-latest
+    needs: promote_to_prod
+    environment: prod
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install "mlflow[databricks]"
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --no-deps -e .
+
+      - name: Azure login for Databricks SPN
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Microsoft Entra token for Azure Databricks
+        id: databricks_aad_token
+        run: |
+          echo "token=$(az account get-access-token \
+            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+            --query accessToken \
+            -o tsv)" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test promoted prod model
+        env:
+          MLFLOW_TRACKING_URI: databricks
+          MLFLOW_REGISTRY_URI: databricks-uc
+          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+          DATABRICKS_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
+          MODEL_NAME: iakshaykr.default.prod
+          MODEL_VERSION: ${{ needs.promote_to_prod.outputs.promoted_model_version }}
+          PREDICTION_INPUT_SIZE: "3072"
+          PYTHONPATH: .
+        run: python src/training/load_and_predict.py
