@@ -68,6 +68,15 @@ def validate_downloaded_model(local_model_path: Path) -> None:
         raise ValueError(f"Failed to load downloaded model from {local_model_path}")
 
 
+def write_github_output(name: str, value: str) -> None:
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if not github_output:
+        return
+
+    with open(github_output, "a", encoding="utf-8") as output_file:
+        output_file.write(f"{name}={value}\n")
+
+
 def main() -> int:
     source_tracking_uri = os.getenv("SOURCE_MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
     source_registry_uri = os.getenv("SOURCE_MLFLOW_REGISTRY_URI", DEFAULT_REGISTRY_URI)
@@ -95,18 +104,28 @@ def main() -> int:
         source_client, source_model_name
     )
     source_uri = f"models:/{source_model_name}/{source_version}"
-    download_root = Path(os.getenv("MODEL_DOWNLOAD_DIR", DEFAULT_DOWNLOAD_DIR))
-    download_root.mkdir(parents=True, exist_ok=True)
-    local_model_path = Path(
-        mlflow.artifacts.download_artifacts(
-            artifact_uri=source_uri,
-            dst_path=str(download_root),
+    if os.getenv("SKIP_DOWNLOAD", "false").lower() == "true":
+        local_model_path = Path(os.getenv("LOCAL_MODEL_PATH", ""))
+        if not local_model_path.exists():
+            raise FileNotFoundError(f"Provided LOCAL_MODEL_PATH not found: {local_model_path}")
+    else:
+        download_root = Path(os.getenv("MODEL_DOWNLOAD_DIR", DEFAULT_DOWNLOAD_DIR))
+        download_root.mkdir(parents=True, exist_ok=True)
+        local_model_path = Path(
+            mlflow.artifacts.download_artifacts(
+                artifact_uri=source_uri,
+                dst_path=str(download_root),
+            )
         )
-    )
-    if not local_model_path.exists():
-        raise FileNotFoundError(f"Downloaded model path not found: {local_model_path}")
+        if not local_model_path.exists():
+            raise FileNotFoundError(f"Downloaded model path not found: {local_model_path}")
 
     validate_downloaded_model(local_model_path)
+    write_github_output("downloaded_model_path", str(local_model_path))
+
+    if os.getenv("VALIDATION_ONLY", "false").lower() == "true":
+        print(f"Validated source model successfully at {local_model_path}")
+        return 0
 
     configure_mlflow(destination_tracking_uri, destination_registry_uri)
     registered_model = mlflow.register_model(
