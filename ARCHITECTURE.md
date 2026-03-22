@@ -63,9 +63,8 @@ This repository implements a multimodal biometric MLOps pipeline around four mai
                                                 |
                                                 v
                                    +----------------------------+
-                                   | promote_to_prod            |
-                                   | promote QA-approved model  |
-                                   | to production              |
+                                   | Prod Release Workflow      |
+                                   | prod_release.yml           |
                                    +-------------+--------------+
                                                  |
                            +---------------------+----------------------+
@@ -95,8 +94,8 @@ This separation is the main design choice in the repo. It keeps orchestration, s
 
 ### GitHub Actions
 
-- Orchestrates the pipeline from validation through promotion.
-- Separates concerns into test, data, training trigger, registration, validation, QA, and production jobs.
+- Orchestrates the candidate and QA pipeline in `mlops_pipeline.yml`.
+- Uses a separate `prod_release.yml` workflow for production release actions.
 - Provides manual control through `workflow_dispatch`.
 
 ### ADLS Gen2
@@ -153,8 +152,8 @@ predicted class and output shape
 There are three inference-style checkpoints in the current design:
 
 - `qa_smoke_test` loads the promoted QA version and runs a low-cost prediction
-- `prod_smoke_test` loads the promoted production version and runs a low-cost prediction
-- `prod_live` optionally runs a final prediction against the exact promoted production version using a manually supplied feature vector
+- `prod_smoke_test` in the prod release workflow loads the promoted production version and runs a low-cost prediction
+- `prod_live` in the prod release workflow optionally runs a final prediction against the exact promoted production version using a manually supplied feature vector
 
 This is enough to demonstrate post-promotion inference verification, but it is not yet a deployed serving endpoint or batch inference service.
 

@@ -70,10 +70,8 @@ So the repo does use multiprocessing; it is just configured conservatively for a
 See [`ARCHITECTURE.md`](/Users/akshaykumar/mlops/mlops/ARCHITECTURE.md) for the full system diagram, component responsibilities, scalability discussion, and current design limits.
 
 ```text
-Kaggle -> GitHub Actions -> ADLS -> Databricks training -> MLflow / Unity Catalog
-                                            |
-                                            v
-                           candidate -> QA -> prod -> prod_live prediction
+MLOps pipeline -> candidate -> QA
+Prod release workflow -> prod -> prod_live prediction
 ```
 
 Architecture explanation:
@@ -84,9 +82,9 @@ Architecture explanation:
 - MLflow and Unity Catalog manage experiment tracking and versioned model promotion
 - smoke tests and `prod_live` verify that the promoted model can actually predict
 
-## CI
+## Workflows
 
-GitHub Actions runs:
+[`mlops_pipeline.yml`](/Users/akshaykumar/mlops/mlops/.github/workflows/mlops_pipeline.yml) runs:
 
 - Python dependency installation
 - Python bytecode compilation
@@ -97,8 +95,12 @@ GitHub Actions runs:
 - MLflow model registration via `src/training/register_model.py`
 - Unity Catalog model promotion via `src/training/copy_uc_model_version.py`
 - QA promotion and QA smoke test
-- Production promotion and production smoke test
-- Optional final `prod_live` prediction using a supplied feature vector
+
+[`prod_release.yml`](/Users/akshaykumar/mlops/mlops/.github/workflows/prod_release.yml) runs:
+
+- production promotion from a validated ADLS artifact path
+- production smoke test
+- optional final `prod_live` prediction using a supplied feature vector
 
 ## Tests
 
@@ -161,8 +163,8 @@ predicted class
 For production-style inference, the workflow uses:
 
 - `qa_smoke_test` to verify the promoted QA version loads and predicts
-- `prod_smoke_test` to verify the promoted production version loads and predicts
-- `prod_live` to run one final manual prediction against the exact promoted production version
+- `prod_smoke_test` in [`prod_release.yml`](/Users/akshaykumar/mlops/mlops/.github/workflows/prod_release.yml) to verify the promoted production version loads and predicts
+- `prod_live` in [`prod_release.yml`](/Users/akshaykumar/mlops/mlops/.github/workflows/prod_release.yml) to run one final manual prediction against the exact promoted production version
 
 ## Scalability
 
@@ -266,6 +268,9 @@ Workflow progression:
 - `model_validation`
 - `promote_to_qa`
 - `qa_smoke_test`
+
+Prod release workflow progression:
+
 - `promote_to_prod`
 - `prod_smoke_test`
 - `prod_live` when `prod_live_input_values` is provided on manual dispatch
@@ -276,6 +281,10 @@ For `prod_live`, provide `prod_live_input_values` as either:
 - or a comma-separated list like `0.1,0.2,0.3,...`
 
 The vector length must match `PREDICTION_INPUT_SIZE` in the workflow, currently `3072`.
+
+For the production release workflow, provide `validated_artifact_path` as the ADLS path created by validation, for example:
+
+- `prod/123456789-1`
 
 The workflow signs in to Azure, gets a Microsoft Entra access token for Azure Databricks, and uses that token to call the Databricks Jobs API.
 
