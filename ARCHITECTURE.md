@@ -118,7 +118,7 @@ This separation is the main design choice in the repo. It keeps orchestration, s
 
 ### Prediction Scripts
 
-- `src/training/load_and_predict.py` validates that promoted models can be loaded.
+- `src/inference/predict.py` validates that promoted models can be loaded.
 - The smoke tests use synthetic input for low-cost checks.
 - `prod_live` supports a real feature vector for a final manual production-style prediction.
 
@@ -136,7 +136,7 @@ The repository does include an inference path, but it is intentionally lightweig
 ```text
 Unity Catalog model version
         ->
-load_and_predict.py
+predict.py
         ->
 resolve model URI or local artifact path
         ->

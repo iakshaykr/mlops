@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Compile Python files
-        run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/biometric/preprocess.py src/biometric/preprocess_spark.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py src/training/save_registered_model.py src/training/load_and_predict.py src/training/preprocess_databricks_job.py tests/test_pipeline.py
+        run: python -m py_compile src/biometric/download.py src/biometric/loader.py src/biometric/model.py src/biometric/preprocess.py src/biometric/preprocess_spark.py src/training/train.py src/training/trigger_databricks_job.py src/training/register_model.py src/training/save_registered_model.py src/inference/predict.py src/training/load_and_predict.py src/training/preprocess_databricks_job.py tests/test_pipeline.py
       - name: Run lint checks
         run: ruff check .
       - name: Run formatting checks
@@ -353,7 +353,7 @@ jobs:
           MODEL_VERSION: ${{ needs.promote_to_qa.outputs.promoted_model_version }}
           PREDICTION_INPUT_SIZE: "3072"
           PYTHONPATH: .
-        run: python src/training/load_and_predict.py
+        run: python src/inference/predict.py
 
       - name: Promote QA validated model artifacts to PROD ADLS
         run: |

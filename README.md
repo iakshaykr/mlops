@@ -141,7 +141,7 @@ This is also enforced in the main GitHub Actions workflow.
 
 ## Inference Pipeline
 
-Inference is implemented through [`load_and_predict.py`](/Users/akshaykumar/mlops/mlops/src/training/load_and_predict.py).
+Inference is implemented through [`predict.py`](/Users/akshaykumar/mlops/mlops/src/inference/predict.py).
 
 The supported inference paths are:
 
@@ -155,7 +155,7 @@ Inference flow:
 ```text
 Promoted model version in Unity Catalog
         ->
-load_and_predict.py resolves models:/<model_name>/<version>
+predict.py resolves models:/<model_name>/<version>
         ->
 mlflow.pytorch.load_model(...)
         ->

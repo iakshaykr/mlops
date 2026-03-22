@@ -158,7 +158,7 @@ jobs:
           MODEL_VERSION: ${{ needs.promote_to_prod.outputs.promoted_model_version }}
           PREDICTION_INPUT_SIZE: "3072"
           PYTHONPATH: .
-        run: python src/training/load_and_predict.py
+        run: python src/inference/predict.py
 
   prod_live:
     runs-on: ubuntu-latest
@@ -208,4 +208,4 @@ jobs:
           PREDICTION_INPUT_SIZE: "3072"
           PREDICTION_VALUES: ${{ inputs.prod_live_input_values }}
           PYTHONPATH: .
-        run: python src/training/load_and_predict.py
+        run: python src/inference/predict.py
