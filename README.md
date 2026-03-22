@@ -85,6 +85,9 @@ GitHub Actions runs:
 - Kaggle dataset download and ADLS upload
 - MLflow model registration via `src/training/register_model.py`
 - Unity Catalog model promotion via `src/training/copy_uc_model_version.py`
+- QA promotion and QA smoke test
+- Production promotion and production smoke test
+- Optional final `prod_live` prediction using a supplied feature vector
 
 ## Databricks Job Trigger
 
@@ -122,6 +125,14 @@ Workflow progression:
 - `qa_smoke_test`
 - `promote_to_prod`
 - `prod_smoke_test`
+- `prod_live` when `prod_live_input_values` is provided on manual dispatch
+
+For `prod_live`, provide `prod_live_input_values` as either:
+
+- a JSON array like `[0.1, 0.2, 0.3, ...]`
+- or a comma-separated list like `0.1,0.2,0.3,...`
+
+The vector length must match `PREDICTION_INPUT_SIZE` in the workflow, currently `3072`.
 
 The workflow signs in to Azure, gets a Microsoft Entra access token for Azure Databricks, and uses that token to call the Databricks Jobs API.
 

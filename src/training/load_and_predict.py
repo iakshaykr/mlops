@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import mlflow.pytorch
+import json
 import torch
 
 
@@ -44,13 +45,40 @@ def resolve_model_source() -> str:
     return str(resolve_model_path(model_dir))
 
 
+def resolve_sample_input(input_size: int) -> torch.Tensor:
+    prediction_values = os.getenv("PREDICTION_VALUES")
+    if not prediction_values:
+        return torch.zeros((1, input_size), dtype=torch.float32)
+
+    try:
+        parsed_values = json.loads(prediction_values)
+    except json.JSONDecodeError:
+        parsed_values = [value.strip() for value in prediction_values.split(",") if value.strip()]
+
+    if not isinstance(parsed_values, list):
+        raise ValueError("PREDICTION_VALUES must be a JSON array or comma-separated list.")
+
+    if len(parsed_values) != input_size:
+        raise ValueError(
+            f"PREDICTION_VALUES length {len(parsed_values)} does not match "
+            f"PREDICTION_INPUT_SIZE {input_size}."
+        )
+
+    try:
+        numeric_values = [float(value) for value in parsed_values]
+    except ValueError as exc:
+        raise ValueError("PREDICTION_VALUES must contain only numeric values.") from exc
+
+    return torch.tensor([numeric_values], dtype=torch.float32)
+
+
 def main() -> int:
     input_size = int(os.getenv("PREDICTION_INPUT_SIZE", str(DEFAULT_INPUT_SIZE)))
     model_source = resolve_model_source()
     model = mlflow.pytorch.load_model(model_source)
     model.eval()
 
-    sample_input = torch.zeros((1, input_size), dtype=torch.float32)
+    sample_input = resolve_sample_input(input_size)
     with torch.no_grad():
         prediction = model(sample_input)
 
