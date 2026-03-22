@@ -199,7 +199,7 @@ jobs:
           az storage blob upload-batch \
             --account-name projectmlops \
             --destination datacontainer \
-            --destination-path prod-model-artifacts/iakshaykr/default/prod/versions/${{ steps.validate_model.outputs.source_model_version }} \
+            --destination-path prod/${{ steps.validate_model.outputs.source_model_version }} \
             --source ./promoted_model_artifacts \
             --overwrite true \
             --auth-mode login
@@ -241,7 +241,7 @@ jobs:
             --account-name projectmlops \
             --destination ./promoted_model_artifacts \
             --source datacontainer \
-            --pattern "prod-model-artifacts/iakshaykr/default/prod/versions/${{ needs.model_validation.outputs.source_model_version }}/*" \
+            --pattern "prod/${{ needs.model_validation.outputs.source_model_version }}/*" \
             --auth-mode login
 
       - name: Promote validated UC model version
