@@ -105,52 +105,52 @@ jobs:
   #         DATABRICKS_WAIT_FOR_COMPLETION: "true"
   #       run: python src/training/trigger_databricks_job.py
 
-  model_registration:
-    runs-on: ubuntu-latest
-    # needs: databricks_job
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt "mlflow[databricks]"
-
-      - name: Azure login for Databricks SPN
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Get Microsoft Entra token for Azure Databricks
-        id: registration_databricks_aad_token
-        run: |
-          echo "token=$(az account get-access-token \
-            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
-            --query accessToken \
-            -o tsv)" >> "$GITHUB_OUTPUT"
-
-      - name: Register latest trained model
-        env:
-          MLFLOW_TRACKING_URI: databricks
-          MLFLOW_REGISTRY_URI: databricks-uc
-          DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
-          DATABRICKS_TOKEN: ${{ steps.registration_databricks_aad_token.outputs.token }}
-          MLFLOW_EXPERIMENT_NAME: /Users/akshaykr9531@gmail.com/biometric-training
-          MLFLOW_RUN_NAME: biometric-simple-model
-          MLFLOW_MODEL_NAME: biometric_model
-          MLFLOW_UC_CATALOG: ${{ vars.UC_CATALOG }}
-          MLFLOW_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
-        run: python src/training/register_model.py
+  # model_registration:
+  #   runs-on: ubuntu-latest
+  #   # needs: databricks_job
+  #
+  #   steps:
+  #     - name: Checkout repo
+  #       uses: actions/checkout@v6
+  #
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v6
+  #       with:
+  #         python-version: "3.11"
+  #         cache: "pip"
+  #
+  #     - name: Install dependencies
+  #       run: pip install -r requirements.txt "mlflow[databricks]"
+  #
+  #     - name: Azure login for Databricks SPN
+  #       uses: azure/login@v2
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #
+  #     - name: Get Microsoft Entra token for Azure Databricks
+  #       id: registration_databricks_aad_token
+  #       run: |
+  #         echo "token=$(az account get-access-token \
+  #           --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+  #           --query accessToken \
+  #           -o tsv)" >> "$GITHUB_OUTPUT"
+  #
+  #     - name: Register latest trained model
+  #       env:
+  #         MLFLOW_TRACKING_URI: databricks
+  #         MLFLOW_REGISTRY_URI: databricks-uc
+  #         DATABRICKS_HOST: https://adb-6701353639688524.4.azuredatabricks.net
+  #         DATABRICKS_TOKEN: ${{ steps.registration_databricks_aad_token.outputs.token }}
+  #         MLFLOW_EXPERIMENT_NAME: /Users/akshaykr9531@gmail.com/biometric-training
+  #         MLFLOW_RUN_NAME: biometric-simple-model
+  #         MLFLOW_MODEL_NAME: biometric_model
+  #         MLFLOW_UC_CATALOG: ${{ vars.UC_CATALOG }}
+  #         MLFLOW_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
+  #       run: python src/training/register_model.py
 
   model_promotion:
     runs-on: ubuntu-latest
-    needs: model_registration
+    # needs: model_registration
 
     steps:
       - name: Checkout repo
