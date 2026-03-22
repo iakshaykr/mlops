@@ -199,7 +199,7 @@ jobs:
           az storage blob upload-batch \
             --account-name projectmlops \
             --destination datacontainer \
-            --destination-path prod/${{ steps.validate_model.outputs.source_model_version }} \
+            --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
             --source ./promoted_model_artifacts \
             --overwrite true \
             --auth-mode login
@@ -241,12 +241,12 @@ jobs:
             --account-name projectmlops \
             --destination ./promoted_model_artifacts \
             --source datacontainer \
-            --pattern "prod/${{ needs.model_validation.outputs.source_model_version }}/*" \
+            --pattern "prod/${{ github.run_id }}-${{ github.run_attempt }}/*" \
             --auth-mode login
 
       - name: Show promotion source paths
         run: |
-          echo "ADLS source path: https://projectmlops.blob.core.windows.net/datacontainer/prod/${{ needs.model_validation.outputs.source_model_version }}/"
+          echo "ADLS source path: https://projectmlops.blob.core.windows.net/datacontainer/prod/${{ github.run_id }}-${{ github.run_attempt }}/"
           echo "Local registration path: ./promoted_model_artifacts/model"
 
       - name: Promote validated UC model version
