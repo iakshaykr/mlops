@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  pytest:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: .
@@ -28,7 +28,7 @@ jobs:
   # 🔹 Stage 2: Data Pipeline
   data_pipeline:
     runs-on: ubuntu-latest
-    needs: test
+    needs: pytest
 
     steps:
       - name: Checkout repo
@@ -106,7 +106,7 @@ jobs:
   #         DATABRICKS_WAIT_FOR_COMPLETION: "true"
   #       run: python src/training/trigger_databricks_job.py
 
-  model_registration:
+  dev_model_registration:
     runs-on: ubuntu-latest
     # needs: data_pipeline
 
@@ -136,7 +136,7 @@ jobs:
             --query accessToken \
             -o tsv)" >> "$GITHUB_OUTPUT"
 
-      - name: Register latest trained model
+      - name: Register latest DEV trained model to UC registry
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
@@ -149,9 +149,9 @@ jobs:
           MLFLOW_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
         run: python src/training/register_model.py
 
-  model_validation:
+  dev_model_validation:
     runs-on: ubuntu-latest
-    needs: model_registration
+    needs: dev_model_registration
     outputs:
       source_model_version: ${{ steps.validate_model.outputs.source_model_version }}
 
@@ -181,7 +181,7 @@ jobs:
             --query accessToken \
             -o tsv)" >> "$GITHUB_OUTPUT"
 
-      - name: Validate downloaded UC model artifacts
+      - name: Validate DEV downloaded UC model artifacts
         id: validate_model
         env:
           MLFLOW_TRACKING_URI: databricks
@@ -195,7 +195,7 @@ jobs:
           VALIDATION_ONLY: "true"
         run: python src/training/copy_uc_model_version.py
 
-      - name: Upload validated model artifacts to ADLS
+      - name: Upload validated model artifacts to QA ADLS
         run: |
           az storage blob upload-batch \
             --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
@@ -208,7 +208,7 @@ jobs:
   # 🔹 QA Stage
   promote_to_qa:
     runs-on: ubuntu-latest
-    needs: model_validation
+    needs: dev_model_validation
     environment: qa
     outputs:
       promoted_model_version: ${{ steps.promote_to_qa.outputs.promoted_model_version }}
@@ -242,7 +242,7 @@ jobs:
             --query accessToken \
             -o tsv)" >> "$GITHUB_OUTPUT"
 
-      - name: Download model artifacts from ADLS
+      - name: Download model artifacts from QA ADLS
         run: |
           set -eu
           prefix="qa/${{ github.run_id }}-${{ github.run_attempt }}"
@@ -293,7 +293,7 @@ jobs:
           echo "ADLS source path: https://${{ vars.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ vars.AZURE_STORAGE_CONTAINER }}/prod/${{ github.run_id }}-${{ github.run_attempt }}/"
           echo "Local registration path: ./promoted_model_artifacts/model"
 
-      - name: Promote validated UC model version to QA
+      - name: Promote validated UC model version to QA Registery
         id: promote_to_qa
         env:
           MLFLOW_TRACKING_URI: databricks
@@ -309,15 +309,12 @@ jobs:
           PYTHONPATH: .
         run: python src/training/copy_uc_model_version.py
 
-      - name: Promote QA validated model artifacts to PROD ADLS
-        run: |
-          az storage blob upload-batch \
-            --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
-            --destination ${{ vars.AZURE_STORAGE_CONTAINER }} \
-            --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
-            --source ./promoted_model_artifacts/model \
-            --overwrite true \
-            --auth-mode login
+      - name: Upload QA model artifacts for later PROD publishing
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-promoted-model-artifacts
+          path: ./promoted_model_artifacts/model
+          if-no-files-found: error
 
   qa_smoke_test:
     runs-on: ubuntu-latest
@@ -364,3 +361,31 @@ jobs:
           PREDICTION_INPUT_SIZE: "3072"
           PYTHONPATH: .
         run: python src/inference/predict.py
+
+  publish_prod_artifacts:
+    runs-on: ubuntu-latest
+    needs:
+      - promote_to_qa
+      - qa_smoke_test
+
+    steps:
+      - name: Download QA model artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: qa-promoted-model-artifacts
+          path: ./promoted_model_artifacts/model
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload QA validated model artifacts to PROD ADLS
+        run: |
+          az storage blob upload-batch \
+            --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
+            --destination ${{ vars.AZURE_STORAGE_CONTAINER }} \
+            --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
+            --source ./promoted_model_artifacts/model \
+            --overwrite true \
+            --auth-mode login
