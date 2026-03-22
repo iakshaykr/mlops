@@ -188,4 +188,5 @@ jobs:
           SOURCE_UC_CATALOG: ${{ vars.UC_CATALOG }}
           SOURCE_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
           DESTINATION_MODEL_NAME: iakshaykr.default.prod
+          MODEL_DOWNLOAD_DIR: promoted_model_artifacts
         run: python src/training/copy_uc_model_version.py

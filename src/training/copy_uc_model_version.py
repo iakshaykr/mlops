@@ -1,7 +1,9 @@
 import os
 import sys
+from pathlib import Path
 
 import mlflow
+import mlflow.pyfunc
 from mlflow.tracking import MlflowClient
 
 
@@ -9,6 +11,7 @@ DEFAULT_TRACKING_URI = "databricks"
 DEFAULT_REGISTRY_URI = "databricks-uc"
 DEFAULT_SOURCE_MODEL_NAME = "biometric_model"
 DEFAULT_DESTINATION_MODEL_NAME = "iakshaykr.default.prod"
+DEFAULT_DOWNLOAD_DIR = "promoted_model_artifacts"
 
 
 def resolve_uc_model_name(
@@ -41,12 +44,27 @@ def resolve_latest_version(client: MlflowClient, model_name: str) -> str:
     return str(latest_version.version)
 
 
-def main() -> int:
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
-    registry_uri = os.getenv("MLFLOW_REGISTRY_URI", DEFAULT_REGISTRY_URI)
+def configure_mlflow(tracking_uri: str, registry_uri: str) -> MlflowClient:
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_registry_uri(registry_uri)
-    client = MlflowClient()
+    return MlflowClient()
+
+
+def validate_downloaded_model(local_model_path: Path) -> None:
+    mlmodel_file = local_model_path / "MLmodel"
+    if not mlmodel_file.is_file():
+        raise FileNotFoundError(f"Downloaded model does not contain MLmodel: {local_model_path}")
+
+    loaded_model = mlflow.pyfunc.load_model(str(local_model_path))
+    if loaded_model is None:
+        raise ValueError(f"Failed to load downloaded model from {local_model_path}")
+
+
+def main() -> int:
+    source_tracking_uri = os.getenv("SOURCE_MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
+    source_registry_uri = os.getenv("SOURCE_MLFLOW_REGISTRY_URI", DEFAULT_REGISTRY_URI)
+    destination_tracking_uri = os.getenv("DESTINATION_MLFLOW_TRACKING_URI", source_tracking_uri)
+    destination_registry_uri = os.getenv("DESTINATION_MLFLOW_REGISTRY_URI", DEFAULT_REGISTRY_URI)
 
     source_model_name = resolve_uc_model_name(
         model_name_env="SOURCE_MODEL_NAME",
@@ -64,16 +82,33 @@ def main() -> int:
             "in the form catalog.schema.model."
         )
 
-    source_version = os.getenv("SOURCE_MODEL_VERSION")
-    if not source_version:
-        source_version = resolve_latest_version(client, source_model_name)
-
+    source_client = configure_mlflow(source_tracking_uri, source_registry_uri)
+    source_version = os.getenv("SOURCE_MODEL_VERSION") or resolve_latest_version(
+        source_client, source_model_name
+    )
     source_uri = f"models:/{source_model_name}/{source_version}"
-    copied_version = client.copy_model_version(source_uri, destination_model_name)
+    download_root = Path(os.getenv("MODEL_DOWNLOAD_DIR", DEFAULT_DOWNLOAD_DIR))
+    download_root.mkdir(parents=True, exist_ok=True)
+    local_model_path = Path(
+        mlflow.artifacts.download_artifacts(
+            artifact_uri=source_uri,
+            dst_path=str(download_root),
+        )
+    )
+    if not local_model_path.exists():
+        raise FileNotFoundError(f"Downloaded model path not found: {local_model_path}")
+
+    validate_downloaded_model(local_model_path)
+
+    configure_mlflow(destination_tracking_uri, destination_registry_uri)
+    registered_model = mlflow.register_model(
+        model_uri=str(local_model_path),
+        name=destination_model_name,
+    )
 
     print(
-        f"Copied {source_uri} to {destination_model_name} "
-        f"as version={copied_version.version}"
+        f"Promoted {source_uri} to {destination_model_name} as version={registered_model.version} "
+        f"using local artifacts at {local_model_path}"
     )
     return 0
 
