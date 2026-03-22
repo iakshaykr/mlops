@@ -126,12 +126,12 @@ Required GitHub secrets:
 
 Required GitHub Actions variables:
 
-- `AZURE_STORAGE_ACCOUNT`: `projectmlops`
-- `AZURE_STORAGE_CONTAINER`: `datacontainer`
-- `DATABRICKS_HOST`: `https://adb-6701353639688524.4.azuredatabricks.net`
-- `MLFLOW_EXPERIMENT_NAME`: `/Users/akshaykr9531@gmail.com/biometric-training`
-- `PROD_MODEL_NAME`: `iakshaykr.default.prod`
-- `DATABRICKS_JOB_ID`: `286717033859672`
+- `AZURE_STORAGE_ACCOUNT`: `<storage-account>`
+- `AZURE_STORAGE_CONTAINER`: `<container>`
+- `DATABRICKS_HOST`: `https://<databricks-workspace-host>`
+- `MLFLOW_EXPERIMENT_NAME`: `/Users/<databricks-user>/biometric-training`
+- `PROD_MODEL_NAME`: `<catalog>.<schema>.prod_model`
+- `DATABRICKS_JOB_ID`: `<databricks-job-id>`
 
 Set these in GitHub under `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`.
 
