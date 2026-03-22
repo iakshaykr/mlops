@@ -151,6 +151,8 @@ jobs:
   model_validation:
     runs-on: ubuntu-latest
     # needs: model_registration
+    outputs:
+      source_model_version: ${{ steps.validate_model.outputs.source_model_version }}
 
     steps:
       - name: Checkout repo
@@ -179,6 +181,7 @@ jobs:
             -o tsv)" >> "$GITHUB_OUTPUT"
 
       - name: Validate downloaded UC model artifacts
+        id: validate_model
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
@@ -195,7 +198,7 @@ jobs:
         run: |
           az storage blob upload-batch \
             --account-name projectmlops \
-            --destination datacontainer/prod \
+            --destination datacontainer/prod-model-artifacts/iakshaykr/default/prod/versions/${{ steps.validate_model.outputs.source_model_version }} \
             --source ./promoted_model_artifacts \
             --overwrite true \
             --auth-mode login
@@ -236,7 +239,7 @@ jobs:
           az storage blob download-batch \
             --account-name projectmlops \
             --destination ./promoted_model_artifacts \
-            --source datacontainer/prod \
+            --source datacontainer/prod-model-artifacts/iakshaykr/default/prod/versions/${{ needs.model_validation.outputs.source_model_version }} \
             --auth-mode login
 
       - name: Promote validated UC model version

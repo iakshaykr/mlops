@@ -104,6 +104,7 @@ def main() -> int:
     source_version = os.getenv("SOURCE_MODEL_VERSION") or resolve_latest_version(
         source_client, source_model_name
     )
+    write_github_output("source_model_version", source_version)
     source_uri = f"models:/{source_model_name}/{source_version}"
     if os.getenv("SKIP_DOWNLOAD", "false").lower() == "true":
         local_model_path = Path(os.getenv("LOCAL_MODEL_PATH", ""))
