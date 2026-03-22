@@ -6,6 +6,10 @@ on:
       validated_artifact_path:
         description: "ADLS artifact path under the container, for example prod/123456789-1"
         required: true
+      batch_data_path:
+        description: "Optional ADLS path to batch CSV for batch inference, for example prod/123456789-1/batch_sample.csv"
+        required: false
+        default: ""
       prod_live_input_values:
         description: "Optional JSON array or comma-separated feature vector for a final prod prediction"
         required: false
@@ -159,6 +163,70 @@ jobs:
           PREDICTION_INPUT_SIZE: "3072"
           PYTHONPATH: .
         run: python src/inference/predict.py
+
+  prod_batch_inference:
+    runs-on: ubuntu-latest
+    needs:
+      - promote_to_prod
+      - prod_smoke_test
+    environment: prod
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install "mlflow[databricks]"
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install pyspark delta-spark
+          pip install --no-deps -e .
+
+      - name: Azure login for Databricks SPN
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Microsoft Entra token for Azure Databricks
+        id: databricks_aad_token
+        run: |
+          echo "token=$(az account get-access-token \
+            --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+            --query accessToken \
+            -o tsv)" >> "$GITHUB_OUTPUT"
+
+      - name: Download batch data from ADLS
+        if: ${{ inputs.batch_data_path != '' }}
+        run: |
+          az storage blob download \
+            --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ vars.AZURE_STORAGE_CONTAINER }} \
+            --name "${{ inputs.batch_data_path }}" \
+            --file ./batch_input.csv \
+            --auth-mode login \
+            --no-progress || echo "Batch data not found, skipping batch inference"
+
+      - name: Run batch inference and save to Delta table
+        if: hashFiles('./batch_input.csv') != ''
+        env:
+          MLFLOW_TRACKING_URI: databricks
+          MLFLOW_REGISTRY_URI: databricks-uc
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
+          MODEL_NAME: ${{ vars.PROD_MODEL_NAME }}
+          MODEL_VERSION: ${{ needs.promote_to_prod.outputs.promoted_model_version }}
+          PREDICTION_INPUT_SIZE: "3072"
+          BATCH_INPUT_PATH: ./batch_input.csv
+          BATCH_OUTPUT_TABLE: iakshaykr.default.prod
+          BATCH_SIZE: "64"
+          PYTHONPATH: .
+        run: python src/inference/batch_predict.py
 
   prod_live:
     runs-on: ubuntu-latest
