@@ -244,6 +244,11 @@ jobs:
             --pattern "prod/${{ needs.model_validation.outputs.source_model_version }}/*" \
             --auth-mode login
 
+      - name: Show promotion source paths
+        run: |
+          echo "ADLS source path: https://projectmlops.blob.core.windows.net/datacontainer/prod/${{ needs.model_validation.outputs.source_model_version }}/"
+          echo "Local registration path: ./promoted_model_artifacts/model"
+
       - name: Promote validated UC model version
         env:
           MLFLOW_TRACKING_URI: databricks
