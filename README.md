@@ -130,10 +130,26 @@ Required GitHub Actions variables:
 - `AZURE_STORAGE_CONTAINER`: `<container>`
 - `DATABRICKS_HOST`: `https://<databricks-workspace-host>`
 - `MLFLOW_EXPERIMENT_NAME`: `/Users/<databricks-user>/biometric-training`
+- `QA_MODEL_NAME`: `<catalog>.<schema>.qa_model`
 - `PROD_MODEL_NAME`: `<catalog>.<schema>.prod_model`
 - `DATABRICKS_JOB_ID`: `<databricks-job-id>`
 
 Set these in GitHub under `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`.
+
+Environment progression:
+
+- `biometric_model`: candidate model registered from training
+- `QA_MODEL_NAME`: validated model promoted to QA
+- `PROD_MODEL_NAME`: QA-approved model promoted to production
+
+Workflow progression:
+
+- `model_registration`
+- `model_validation`
+- `promote_to_qa`
+- `qa_smoke_test`
+- `promote_to_prod`
+- `prod_smoke_test`
 
 The workflow signs in to Azure, gets a Microsoft Entra access token for Azure Databricks, and uses that token to call the Databricks Jobs API.
 
