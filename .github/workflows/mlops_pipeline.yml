@@ -187,7 +187,6 @@ jobs:
           SOURCE_MODEL_NAME: biometric_model
           SOURCE_UC_CATALOG: ${{ vars.UC_CATALOG }}
           SOURCE_UC_SCHEMA: ${{ vars.UC_SCHEMA }}
-          DESTINATION_MODEL_NAME: iakshaykr.default.prod
           MODEL_DOWNLOAD_DIR: promoted_model_artifacts
           VALIDATION_ONLY: "true"
         run: python src/training/copy_uc_model_version.py
@@ -197,6 +196,15 @@ jobs:
         with:
           name: validated-uc-model
           path: promoted_model_artifacts
+
+      - name: Upload validated model artifacts to ADLS
+        run: |
+          az storage blob upload-batch \
+            --account-name projectmlops \
+            --destination datacontainer/prod \
+            --source ./promoted_model_artifacts \
+            --overwrite true \
+            --auth-mode login
 
   model_promotion:
     runs-on: ubuntu-latest

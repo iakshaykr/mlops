@@ -89,15 +89,6 @@ def main() -> int:
         schema_env="SOURCE_UC_SCHEMA",
         default_model_name=DEFAULT_SOURCE_MODEL_NAME,
     )
-    destination_model_name = os.getenv(
-        "DESTINATION_MODEL_NAME",
-        DEFAULT_DESTINATION_MODEL_NAME,
-    )
-    if destination_model_name.count(".") != 2:
-        raise ValueError(
-            "DESTINATION_MODEL_NAME must be a full Unity Catalog model name "
-            "in the form catalog.schema.model."
-        )
 
     source_client = configure_mlflow(source_tracking_uri, source_registry_uri)
     source_version = os.getenv("SOURCE_MODEL_VERSION") or resolve_latest_version(
@@ -126,6 +117,16 @@ def main() -> int:
     if os.getenv("VALIDATION_ONLY", "false").lower() == "true":
         print(f"Validated source model successfully at {local_model_path}")
         return 0
+
+    destination_model_name = os.getenv(
+        "DESTINATION_MODEL_NAME",
+        DEFAULT_DESTINATION_MODEL_NAME,
+    )
+    if destination_model_name.count(".") != 2:
+        raise ValueError(
+            "DESTINATION_MODEL_NAME must be a full Unity Catalog model name "
+            "in the form catalog.schema.model."
+        )
 
     configure_mlflow(destination_tracking_uri, destination_registry_uri)
     registered_model = mlflow.register_model(
