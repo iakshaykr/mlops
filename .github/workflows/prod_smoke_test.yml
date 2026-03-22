@@ -31,6 +31,7 @@ jobs:
         run: |
           pip install "mlflow[databricks]"
           pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --no-deps -e .
 
       - name: Azure login for Databricks SPN
         uses: azure/login@v2
@@ -54,4 +55,5 @@ jobs:
           MODEL_NAME: iakshaykr.default.prod
           MODEL_VERSION: ${{ inputs.model_version }}
           PREDICTION_INPUT_SIZE: ${{ inputs.prediction_input_size }}
+          PYTHONPATH: .
         run: python src/training/load_and_predict.py
