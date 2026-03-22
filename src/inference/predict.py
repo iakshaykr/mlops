@@ -5,6 +5,7 @@ from pathlib import Path
 
 import mlflow.pytorch
 import torch
+from torch import nn
 
 DEFAULT_MODEL_DIR = "saved_model"
 DEFAULT_MODEL_NAME = "catalog.schema.prod_model"
@@ -73,17 +74,42 @@ def resolve_sample_input(input_size: int) -> torch.Tensor:
     return torch.tensor([numeric_values], dtype=torch.float32)
 
 
-def main() -> int:
-    input_size = int(os.getenv("PREDICTION_INPUT_SIZE", str(DEFAULT_INPUT_SIZE)))
+def load_model() -> tuple[nn.Module, str]:
     model_source = resolve_model_source()
     model = mlflow.pytorch.load_model(model_source)
     model.eval()
+    return model, model_source
 
-    sample_input = resolve_sample_input(input_size)
+
+def predict_tensor(model: nn.Module, sample_input: torch.Tensor) -> tuple[torch.Tensor, int]:
     with torch.no_grad():
         prediction = model(sample_input)
-
     predicted_class = int(torch.argmax(prediction, dim=1).item())
+    return prediction, predicted_class
+
+
+def predict_values(values: list[float], input_size: int) -> dict[str, object]:
+    if len(values) != input_size:
+        raise ValueError(
+            f"Input feature length {len(values)} does not match expected input size {input_size}."
+        )
+
+    model, model_source = load_model()
+    sample_input = torch.tensor([values], dtype=torch.float32)
+    prediction, predicted_class = predict_tensor(model, sample_input)
+    return {
+        "model_source": model_source,
+        "output_shape": list(prediction.shape),
+        "predicted_class": predicted_class,
+        "scores": prediction.squeeze(0).tolist(),
+    }
+
+
+def main() -> int:
+    input_size = int(os.getenv("PREDICTION_INPUT_SIZE", str(DEFAULT_INPUT_SIZE)))
+    model, model_source = load_model()
+    sample_input = resolve_sample_input(input_size)
+    prediction, predicted_class = predict_tensor(model, sample_input)
     logger.info(
         "Prediction successful. model_source=%s output_shape=%s predicted_class=%s",
         model_source,

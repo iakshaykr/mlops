@@ -155,8 +155,6 @@ There are three inference-style checkpoints in the current design:
 - `prod_smoke_test` in the prod release workflow loads the promoted production version and runs a low-cost prediction
 - `prod_live` in the prod release workflow optionally runs a final prediction against the exact promoted production version using a manually supplied feature vector
 
-This is enough to demonstrate post-promotion inference verification, but it is not yet a deployed serving endpoint or batch inference service.
-
 ## Model Versioning Strategy
 
 Versioning is handled at two levels:

@@ -172,6 +172,23 @@ For production-style inference, the workflow uses:
 - `prod_smoke_test` in [`prod_release.yml`](/Users/akshaykumar/mlops/mlops/.github/workflows/prod_release.yml) to verify the promoted production version loads and predicts
 - `prod_live` in [`prod_release.yml`](/Users/akshaykumar/mlops/mlops/.github/workflows/prod_release.yml) to run one final manual prediction against the exact promoted production version
 
+## Test Payload Helper
+
+Use [`generate_payload.py`](/Users/akshaykumar/mlops/mlops/src/inference/generate_payload.py) to create valid inference payloads.
+
+Examples:
+
+```bash
+python src/inference/generate_payload.py
+python src/inference/generate_payload.py --mode constant --value 0.1
+python src/inference/generate_payload.py --mode ramp
+```
+
+Use the plain output for:
+
+- `prod_live_input_values`
+- `rollback_live_input_values`
+
 ## Scalability
 
 - ADLS separates storage from compute, so raw data and validated model artifacts do not depend on the runner filesystem.
