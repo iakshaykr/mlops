@@ -361,6 +361,7 @@ jobs:
             --account-name ${{ vars.AZURE_STORAGE_ACCOUNT }} \
             --destination ${{ vars.AZURE_STORAGE_CONTAINER }} \
             --destination-path prod/${{ github.run_id }}-${{ github.run_attempt }} \
-            --source ./promoted_model_artifacts \
+            --source ./promoted_model_artifacts/model \
             --overwrite true \
             --auth-mode login
+
