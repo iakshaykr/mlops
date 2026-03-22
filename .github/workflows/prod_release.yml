@@ -212,15 +212,13 @@ jobs:
             --auth-mode login \
             --no-progress || echo "Batch data not found, skipping batch inference"
 
-      - name: Run batch inference and save to Delta table
+      - name: Run batch inference and save to volume
         if: hashFiles('./batch_input.csv') != ''
         env:
           MLFLOW_TRACKING_URI: databricks
           MLFLOW_REGISTRY_URI: databricks-uc
           DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ steps.databricks_aad_token.outputs.token }}
-          AZURE_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
-          AZURE_STORAGE_CONTAINER: ${{ vars.AZURE_STORAGE_CONTAINER }}
           MODEL_NAME: ${{ vars.PROD_MODEL_NAME }}
           MODEL_VERSION: ${{ needs.promote_to_prod.outputs.promoted_model_version }}
           PREDICTION_INPUT_SIZE: "3072"

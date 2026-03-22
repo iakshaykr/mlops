@@ -127,8 +127,12 @@ def save_predictions_to_volume(
     output_volume_path: str,
     model_source: str,
 ) -> None:
-    """Save batch predictions to Databricks volume via ADLS upload."""
-    import subprocess
+    """Save batch predictions directly to Databricks volume."""
+    try:
+        from databricks.sdk import WorkspaceClient
+    except ImportError:
+        raise ImportError(
+            "databricks-sdk not available. Install with: pip install databricks-sdk")
 
     # Create results dataframe
     results_df = pd.DataFrame(results)
@@ -140,43 +144,23 @@ def save_predictions_to_volume(
     local_file = "batch_predictions.csv"
     results_df.to_csv(local_file, index=False)
 
-    # Upload to ADLS (volume)
+    # Upload directly to Databricks volume
     try:
-        # Extract volume path components
-        # Expected format: /Volumes/catalog/schema/volume_name
-        if output_volume_path.startswith("/Volumes/"):
-            # Convert to ADLS path: catalog/schema/volume_name/filename
-            volume_parts = output_volume_path.replace(
-                "/Volumes/", "").split("/")
-            if len(volume_parts) >= 3:
-                catalog, schema, volume_name = volume_parts[0], volume_parts[1], volume_parts[2]
-                adls_path = f"{catalog}/{schema}/{volume_name}/batch_predictions_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        # Initialize Databricks client
+        client = WorkspaceClient(
+            host=os.getenv("DATABRICKS_HOST"),
+            token=os.getenv("DATABRICKS_TOKEN")
+        )
 
-                # Upload using az CLI (assumes Azure login is done)
-                result = subprocess.run([
-                    "az", "storage", "blob", "upload",
-                    "--account-name", os.getenv("AZURE_STORAGE_ACCOUNT", ""),
-                    "--container-name", os.getenv(
-                        "AZURE_STORAGE_CONTAINER", ""),
-                    "--name", adls_path,
-                    "--file", local_file,
-                    "--auth-mode", "login",
-                    "--overwrite", "true"
-                ], capture_output=True, text=True)
+        # Generate unique filename
+        timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+        volume_file_path = f"{output_volume_path}/batch_predictions_{timestamp}.csv"
 
-                if result.returncode == 0:
-                    logger.info(
-                        f"Batch predictions saved to volume: {output_volume_path}")
-                else:
-                    logger.error(
-                        f"Failed to upload to volume: {result.stderr}")
-                    raise Exception(f"ADLS upload failed: {result.stderr}")
-            else:
-                raise ValueError(
-                    f"Invalid volume path format: {output_volume_path}")
-        else:
-            raise ValueError(
-                f"Volume path must start with /Volumes/: {output_volume_path}")
+        # Upload file to volume
+        with open(local_file, "rb") as f:
+            client.files.upload(volume_file_path, f, overwrite=True)
+
+        logger.info(f"Batch predictions saved to volume: {volume_file_path}")
 
     except Exception as e:
         logger.error(f"Could not save to volume: {e}")
