@@ -1,6 +1,0 @@
-torch
-pandas
-numpy
-pyyaml
-mlflow
-Pillow
