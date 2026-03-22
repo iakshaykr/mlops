@@ -63,8 +63,7 @@ def load_input_data(input_path: str, input_size: int) -> pd.DataFrame:
     logger.info(f"Loaded data with shape {df.shape} from {input_path}")
 
     # Validate that we have enough features
-    feature_cols = [col for col in df.columns if col not in [
-        "id", "label", "target"]]
+    feature_cols = [col for col in df.columns if col not in ["id", "label", "target"]]
     if len(feature_cols) < input_size:
         raise ValueError(
             f"Input file has {len(feature_cols)} feature columns, but expected {input_size}"
@@ -80,8 +79,9 @@ def extract_features(
 ) -> torch.Tensor:
     """Extract feature tensor from dataframe."""
     if feature_cols is None:
-        feature_cols = [col for col in df.columns if col not in [
-            "id", "label", "target"]][:input_size]
+        feature_cols = [col for col in df.columns if col not in ["id", "label", "target"]][
+            :input_size
+        ]
 
     features_array = df[feature_cols].values.astype("float32")
     return torch.tensor(features_array, dtype=torch.float32)
@@ -135,7 +135,8 @@ def save_predictions_to_volume(
         from databricks.sdk import WorkspaceClient
     except ImportError as exc:
         raise ImportError(
-            "databricks-sdk not available. Install with: pip install databricks-sdk") from exc
+            "databricks-sdk not available. Install with: pip install databricks-sdk"
+        ) from exc
 
     # Create results dataframe
     results_df = pd.DataFrame(results)
@@ -151,12 +152,11 @@ def save_predictions_to_volume(
     try:
         # Initialize Databricks client
         client = WorkspaceClient(
-            host=os.getenv("DATABRICKS_HOST"),
-            token=os.getenv("DATABRICKS_TOKEN")
+            host=os.getenv("DATABRICKS_HOST"), token=os.getenv("DATABRICKS_TOKEN")
         )
 
         # Generate unique filename
-        timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
         volume_file_path = f"{output_volume_path}/batch_predictions_{timestamp}.csv"
 
         # Upload file to volume
@@ -192,11 +192,11 @@ def main() -> int:
     # Configuration from environment
     input_path = os.getenv("BATCH_INPUT_PATH")
     output_volume_path = os.getenv(
-        "BATCH_OUTPUT_VOLUME_PATH", "/Volumes/iakshaykr/default/prod/prod_predictions/")
+        "BATCH_OUTPUT_VOLUME_PATH", "/Volumes/iakshaykr/default/prod/prod_predictions/"
+    )
     output_csv = os.getenv("BATCH_OUTPUT_CSV")
     batch_size = int(os.getenv("BATCH_SIZE", str(DEFAULT_BATCH_SIZE)))
-    input_size = int(
-        os.getenv("PREDICTION_INPUT_SIZE", str(DEFAULT_INPUT_SIZE)))
+    input_size = int(os.getenv("PREDICTION_INPUT_SIZE", str(DEFAULT_INPUT_SIZE)))
     device = os.getenv("DEVICE", "cpu")
 
     if not input_path:
@@ -224,11 +224,9 @@ def main() -> int:
     # Save results
     if output_volume_path and output_volume_path != "":
         try:
-            save_predictions_to_volume(
-                results, input_df, output_volume_path, model_source)
+            save_predictions_to_volume(results, input_df, output_volume_path, model_source)
         except ImportError as e:
-            logger.warning(
-                f"Could not save to volume: {e}. Try CSV export instead.")
+            logger.warning(f"Could not save to volume: {e}. Try CSV export instead.")
 
     if output_csv:
         save_predictions_to_csv(results, input_df, output_csv, model_source)
@@ -239,8 +237,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     try:
-        logging.basicConfig(level=logging.INFO,
-                            format="%(levelname)s %(name)s: %(message)s")
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
         raise SystemExit(main())
     except Exception as exc:  # noqa: BLE001
         logger.exception("Batch prediction failed: %s", exc)
