@@ -1,4 +1,4 @@
-name: MLOps Pipeline
+name: MLOps DEV & QA Release
 
 on:
   workflow_dispatch:
