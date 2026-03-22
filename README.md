@@ -241,6 +241,52 @@ This repo uses explicit model stages rather than a single mutable model target.
 - `QA_MODEL_NAME` receives a promoted version after validation
 - `PROD_MODEL_NAME` receives a promoted version only after QA passes
 
+## Quick Start: Tests & Prod Release
+
+### Run tests
+
+```bash
+pip install -r requirements.txt
+pytest -q
+```
+
+### Run lint/format checks
+
+```bash
+ruff check .
+ruff format --check .
+```
+
+### Trigger prod_release workflow
+
+1. In GitHub Actions, pick `Prod Release` workflow.
+2. Click "Run workflow".
+3. Fill inputs:
+   - `validated_artifact_path`: `prod/<artifact-version>`
+   - `batch_data_path`: optional ADLS blob path for batch inference (`infrencing_data/batch_sample.csv`)
+   - `prod_live_input_values`: optional JSON array or CSV values for a final single inference step
+4. Run workflow.
+
+### Expected environment variables / secrets (GitHub)
+
+- `AZURE_CREDENTIALS` (service principal credentials)
+- `AZURE_STORAGE_ACCOUNT` (storage account name)
+- `AZURE_STORAGE_CONTAINER` (storage container)
+- `DATABRICKS_HOST` (workspace URL)
+- `DATABRICKS_TOKEN` (service principal token)
+- `UC_CATALOG`, `UC_SCHEMA` (Unity Catalog target)
+- `PROD_MODEL_NAME` (production model name)
+
+### Expected local env vars for manual run
+
+```bash
+export PYTHONPATH=.
+export MODEL_NAME=biometric_model
+export MODEL_VERSION=1
+export PREDICTION_INPUT_SIZE=3072
+export BATCH_INPUT_PATH=batch_sample.csv
+export BATCH_OUTPUT_VOLUME_PATH=/Volumes/iakshaykr/default/prod/prod_predictions
+```
 Versioning behavior:
 
 - training creates an MLflow run and logs the model artifact
