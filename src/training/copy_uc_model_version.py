@@ -6,6 +6,14 @@ import mlflow
 import mlflow.pyfunc
 from mlflow.tracking import MlflowClient
 
+try:
+    _this_file = Path(__file__).resolve()
+except NameError:
+    _this_file = Path("/Workspace/Users/akshaykr9531@gmail.com/mlops/src/training/copy_uc_model_version.py")
+
+PROJECT_ROOT = _this_file.parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
 
 DEFAULT_TRACKING_URI = "databricks"
 DEFAULT_REGISTRY_URI = "databricks-uc"
